@@ -165,7 +165,7 @@
   }
 
   input::placeholder {
-    color: var(--light-grey);
+    color: var(--mid-grey);
   }
 
   .error {
