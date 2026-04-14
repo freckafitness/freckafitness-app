@@ -44,7 +44,7 @@
   <div class="card">
     <div class="brand">
       <p class="eyebrow">Client Portal</p>
-      <p class="wordmark">FRECKA FITNESS</p>
+      <img src="/Logo/frecka-01.svg" alt="Frecka Fitness" class="logo" />
     </div>
 
     <form on:submit={handleLogin}>
@@ -117,12 +117,12 @@
     margin-bottom: 10px;
   }
 
-  .wordmark {
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: 0.2em;
-    color: var(--black);
-    text-transform: uppercase;
+  .logo {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
   }
 
   form {
