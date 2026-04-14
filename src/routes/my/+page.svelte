@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase.js';
+  import Header from '$lib/Header.svelte';
 
   let client = null;
 
@@ -19,20 +20,12 @@
       .single();
     client = data;
   });
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    goto('/login');
-  }
 </script>
 
 <svelte:head><title>My Profile — Frecka Fitness</title></svelte:head>
 
 <div class="page">
-  <header>
-    <span class="wordmark">FRECKA FITNESS</span>
-    <button on:click={signOut}>Sign Out</button>
-  </header>
+  <Header />
   <main>
     <p class="eyebrow">Client Portal</p>
     <h1>Welcome{client ? `, ${client.first_name}` : ''}</h1>
