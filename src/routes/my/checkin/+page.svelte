@@ -226,7 +226,7 @@
         <button type="submit" disabled={loading}>
           {loading ? 'Submitting…' : 'Submit Check-In'}
         </button>
-        <p class="submit-note">Sent directly to Ryan. He reviews check-ins every Monday.</p>
+        <p class="submit-note">Sent directly to me. I review check-ins every Monday.</p>
       </div>
 
     </form>
