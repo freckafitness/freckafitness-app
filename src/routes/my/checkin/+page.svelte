@@ -394,25 +394,12 @@
     appearance: none;
     outline: none;
     border: none;
-    padding: 16px 0;
-    margin: -16px 0;
+    padding: 0;
     box-shadow: none;
-    cursor: pointer;
-    background-clip: content-box;
   }
 
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--black);
-    cursor: pointer;
-    border: 3px solid var(--off-white);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  }
-
-  input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
     border-radius: 50%;
