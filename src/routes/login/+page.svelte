@@ -109,9 +109,9 @@
   }
 
   .eyebrow {
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 10px;
@@ -138,11 +138,11 @@
   }
 
   label {
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--mid-grey);
+    color: var(--black);
   }
 
   .req { color: var(--accent); }
