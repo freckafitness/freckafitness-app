@@ -389,24 +389,47 @@
 
   input[type="range"] {
     flex: 1;
-    height: 4px;
-    border-radius: 2px;
+    height: 8px;
+    border-radius: 4px;
     appearance: none;
     outline: none;
     border: none;
-    padding: 0;
+    padding: 10px 0;
     box-shadow: none;
+    cursor: pointer;
+    background-clip: content-box;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 4px;
   }
 
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: var(--black);
     cursor: pointer;
     border: 3px solid var(--off-white);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    margin-top: -10px;
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 8px;
+    border-radius: 4px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--black);
+    cursor: pointer;
+    border: 3px solid var(--off-white);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   }
 
   .rating-display {
