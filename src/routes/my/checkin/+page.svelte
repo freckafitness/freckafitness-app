@@ -10,6 +10,7 @@
   let error = '';
 
   // Form fields
+  let missedSessions = 0;
   let missedReason = '';
   let bestLift = '';
   let progressTrend = '';
@@ -36,7 +37,10 @@
     5: { label: 'Great',         color: '#6888E8' },
   };
 
-  $: ratingInfo = RATINGS[weekRating] ?? RATINGS[3];
+  const MISSED_LABELS = { 1: '1', 2: '2', 3: '3', 4: '>3' };
+
+  $: ratingInfo  = RATINGS[weekRating] ?? RATINGS[3];
+  $: missedPct   = missedSessions > 0 ? ((missedSessions - 1) / 3) * 100 : 0;
   $: nutritionPct = ((nutritionAdherence - 1) / 9) * 100;
   $: ratingPct    = ((weekRating - 1) / 4) * 100;
 
@@ -66,7 +70,7 @@
     const { error: insertError } = await supabase.from('checkins').insert({
       client_id:           clientId,
       week_ending:         weekEnding,
-      missed_sessions:     null,
+      missed_sessions:     missedSessions > 0 ? missedSessions : null,
       best_lift:           bestLift,
       progress_trend:      progressTrend,
       program_feedback:    [missedReason, programFeedback].filter(Boolean).join('\n\n'),
@@ -109,11 +113,29 @@
         <div class="section-label"><span>01</span> Training</div>
 
         <div class="field">
-          <label for="missedReason">If you missed sessions — what got in the way?</label>
+          <label>Missed Sessions This Week</label>
+          {#if missedSessions === 0}
+            <button type="button" class="missed-none" on:click={() => missedSessions = 1}>None — tap to log missed sessions</button>
+          {:else}
+            <div class="scale-wrap">
+              <span class="scale-label">1</span>
+              <input type="range" min="1" max="4" bind:value={missedSessions}
+                style="background: linear-gradient(to right, var(--accent) 0%, var(--accent) {missedPct}%, var(--light-grey) {missedPct}%, var(--light-grey) 100%)" />
+              <span class="scale-value">{MISSED_LABELS[missedSessions]}</span>
+              <span class="scale-label">&gt;3</span>
+            </div>
+            <button type="button" class="missed-reset" on:click={() => { missedSessions = 0; missedReason = ''; }}>✕ No missed sessions</button>
+          {/if}
+        </div>
+
+        {#if missedSessions > 0}
+        <div class="field">
+          <label for="missedReason">What got in the way?</label>
           <textarea id="missedReason" bind:value={missedReason}
-            placeholder="Work, illness, travel, life happened... Leave blank if you hit everything."
+            placeholder="Work, illness, travel, life happened..."
             style="min-height:72px;"></textarea>
         </div>
+        {/if}
 
         <div class="field">
           <label for="bestLift">Best Lift or Performance This Week <span class="req">*</span></label>
@@ -429,6 +451,38 @@
     font-size: 15px;
     font-weight: 600;
   }
+
+  .missed-none {
+    background: var(--warm-white);
+    border: 1.5px dashed var(--light-grey);
+    border-radius: 6px;
+    color: var(--mid-grey);
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 11px 16px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .missed-none:hover { border-color: var(--accent); color: var(--black); }
+
+  .missed-reset {
+    background: none;
+    border: none;
+    color: var(--mid-grey);
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 0 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .missed-reset:hover { color: var(--black); }
 
   .error {
     font-size: 13px;
