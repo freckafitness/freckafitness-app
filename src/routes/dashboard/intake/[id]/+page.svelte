@@ -80,6 +80,21 @@
   }
 
   function val(v) { return v || '—'; }
+
+  function calcAge(birthday) {
+    if (!birthday) return null;
+    const today = new Date();
+    const dob = new Date(birthday);
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    return age;
+  }
+
+  function fmtBirthday(birthday) {
+    if (!birthday) return null;
+    return new Date(birthday + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
 </script>
 
 <svelte:head><title>{intake ? `${intake.first_name} ${intake.last_name} — Intake` : 'Intake'} — Frecka Fitness</title></svelte:head>
@@ -170,8 +185,14 @@
           <h2>Health &amp; Lifestyle</h2>
           <div class="grid">
             <div class="item">
-              <p class="item-label">Age</p>
-              <p class="item-value">{val(intake.age)}</p>
+              <p class="item-label">Birthday</p>
+              <p class="item-value">
+                {#if intake.birthday}
+                  {fmtBirthday(intake.birthday)} <span class="age-pill">{calcAge(intake.birthday)}</span>
+                {:else}
+                  —
+                {/if}
+              </p>
             </div>
             <div class="item">
               <p class="item-label">Gender</p>
@@ -412,6 +433,20 @@
     font-size: 14px;
     color: var(--black);
     line-height: 1.5;
+  }
+
+  .age-pill {
+    display: inline-block;
+    background: var(--warm-white);
+    border: 1px solid var(--light-grey);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 1px 8px;
+    color: var(--mid-grey);
+    vertical-align: middle;
+    margin-left: 6px;
   }
 
   /* Coach Notes */
