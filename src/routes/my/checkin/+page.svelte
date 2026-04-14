@@ -115,16 +115,18 @@
         <div class="field">
           <label>Missed Sessions This Week</label>
           {#if missedSessions === 0}
-            <button type="button" class="missed-none" on:click={() => missedSessions = 1}>None — tap to log missed sessions</button>
+            <div class="option-group">
+              <label class="option-chip selected" on:click={() => missedSessions = 1}>
+                <input type="radio" /> None
+              </label>
+            </div>
           {:else}
             <div class="scale-wrap">
-              <span class="scale-label">1</span>
               <input type="range" min="1" max="4" bind:value={missedSessions}
                 style="background: linear-gradient(to right, var(--accent) 0%, var(--accent) {missedPct}%, var(--light-grey) {missedPct}%, var(--light-grey) 100%)" />
               <span class="scale-value">{MISSED_LABELS[missedSessions]}</span>
-              <span class="scale-label">&gt;3</span>
             </div>
-            <button type="button" class="missed-reset" on:click={() => { missedSessions = 0; missedReason = ''; }}>✕ No missed sessions</button>
+            <button type="button" class="missed-reset" on:click={() => { missedSessions = 0; missedReason = ''; }}>← None</button>
           {/if}
         </div>
 
@@ -451,23 +453,6 @@
     font-size: 15px;
     font-weight: 600;
   }
-
-  .missed-none {
-    background: var(--warm-white);
-    border: 1.5px dashed var(--light-grey);
-    border-radius: 6px;
-    color: var(--mid-grey);
-    font-family: 'Halyard Display', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 11px 16px;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-    transition: border-color 0.15s, color 0.15s;
-  }
-
-  .missed-none:hover { border-color: var(--accent); color: var(--black); }
 
   .missed-reset {
     background: none;
