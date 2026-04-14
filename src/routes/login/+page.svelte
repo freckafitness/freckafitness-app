@@ -76,15 +76,18 @@
         <p class="error">{error}</p>
       {/if}
 
-      <button type="submit" disabled={loading}>
-        {loading ? 'Signing in…' : 'Sign In'}
-      </button>
+      <div class="submit-wrap">
+        <button type="submit" disabled={loading}>
+          {loading ? 'Signing in…' : 'Sign In'}
+        </button>
+      </div>
     </form>
   </div>
 </div>
 
 <style>
   .page {
+    background: var(--black);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -93,7 +96,7 @@
   }
 
   .card {
-    background: var(--black);
+    background: var(--off-white);
     border-radius: 16px;
     padding: 3rem 2.5rem;
     width: 100%;
@@ -118,7 +121,7 @@
     font-size: 22px;
     font-weight: 800;
     letter-spacing: 0.2em;
-    color: var(--off-white);
+    color: var(--black);
     text-transform: uppercase;
   }
 
@@ -139,7 +142,7 @@
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--light-grey);
+    color: var(--mid-grey);
   }
 
   .req { color: var(--accent); }
@@ -147,7 +150,7 @@
   input {
     width: 100%;
     background: var(--warm-white);
-    border: 1.5px solid transparent;
+    border: 1.5px solid var(--light-grey);
     border-radius: 6px;
     color: var(--black);
     font-family: 'Halyard Display', sans-serif;
@@ -158,7 +161,7 @@
   }
 
   input:focus {
-    border-color: var(--accent);
+    border-color: var(--black);
   }
 
   input::placeholder {
@@ -167,30 +170,52 @@
 
   .error {
     font-size: 13px;
-    color: #e07070;
+    color: var(--error);
   }
 
-  button {
-    background: var(--accent);
-    color: var(--black);
+  .submit-wrap {
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+  }
+
+  button[type="submit"] {
+    background: var(--black);
+    color: var(--off-white);
     border: none;
     border-radius: 6px;
+    padding: 18px 48px;
     font-family: 'Halyard Display', sans-serif;
-    font-size: 13px;
+    font-size: 17px;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 15px;
     cursor: pointer;
-    transition: background 0.15s;
-    margin-top: 0.5rem;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.18s, transform 0.12s;
   }
 
-  button:hover:not(:disabled) {
-    background: var(--accent-dark);
+  button[type="submit"]:hover:not(:disabled) {
+    background: #1f2e44;
   }
 
-  button:disabled {
+  button[type="submit"]:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  button[type="submit"]::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  button[type="submit"]:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
