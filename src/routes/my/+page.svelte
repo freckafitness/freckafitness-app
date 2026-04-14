@@ -1,10 +1,12 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { supabase } from '$lib/supabase.js';
   import Header from '$lib/Header.svelte';
 
   let client = null;
+  let checkinDone = false;
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -19,56 +21,37 @@
       .eq('auth_user_id', (await supabase.auth.getUser()).data.user.id)
       .single();
     client = data;
+
+    checkinDone = $page.url.searchParams.get('checkin') === 'done';
   });
 </script>
 
-<svelte:head><title>My Profile — Frecka Fitness</title></svelte:head>
+<svelte:head><title>My Portal — Frecka Fitness</title></svelte:head>
 
 <div class="page">
   <Header />
   <main>
     <p class="eyebrow">Client Portal</p>
     <h1>Welcome{client ? `, ${client.first_name}` : ''}</h1>
-    <p class="sub">Your check-ins and progress coming soon.</p>
+
+    {#if checkinDone}
+      <div class="success-banner">
+        Check-in submitted — Ryan will review and respond before next week.
+      </div>
+    {/if}
+
+    <div class="actions">
+      <a href="/my/checkin" class="btn-primary">Submit Weekly Check-In</a>
+    </div>
+
+    <p class="coming-soon">Your check-in history and progress charts coming soon.</p>
   </main>
 </div>
 
 <style>
   .page { min-height: 100vh; }
 
-  header {
-    background: var(--black);
-    padding: 20px 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .wordmark {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    color: var(--off-white);
-  }
-
-  button {
-    background: none;
-    border: 1px solid rgba(224,224,219,0.3);
-    color: var(--off-white);
-    font-family: 'Halyard Display', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: border-color 0.15s;
-  }
-
-  button:hover { border-color: var(--off-white); }
-
-  main { padding: 48px 40px; }
+  main { max-width: 680px; margin: 0 auto; padding: 48px 32px; }
 
   .eyebrow {
     font-size: 12px;
@@ -83,8 +66,47 @@
     font-size: 2rem;
     font-weight: 700;
     color: var(--black);
-    margin-bottom: 8px;
+    margin-bottom: 28px;
   }
 
-  .sub { color: var(--mid-grey); font-size: 15px; }
+  .success-banner {
+    background: #d4edda;
+    color: var(--success);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+
+  .actions { margin-bottom: 32px; }
+
+  .btn-primary {
+    display: inline-block;
+    background: var(--black);
+    color: var(--off-white);
+    text-decoration: none;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 14px 32px;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.15s;
+  }
+
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .btn-primary:hover { background: #1f2f45; }
+
+  .coming-soon { color: var(--mid-grey); font-size: 14px; }
 </style>
