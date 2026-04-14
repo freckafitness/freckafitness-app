@@ -43,8 +43,8 @@
 <div class="page">
   <div class="card">
     <div class="brand">
-      <p class="eyebrow">Client Portal</p>
       <img src="/Logo/frecka-01.svg" alt="Frecka Fitness" class="logo" />
+      <p class="eyebrow">Client Portal</p>
     </div>
 
     <form on:submit={handleLogin}>
@@ -113,8 +113,9 @@
     font-weight: 600;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 10px;
+    color: var(--black);
+    margin-top: 12px;
+    margin-bottom: 0;
   }
 
   .logo {
