@@ -103,7 +103,7 @@
       Week ending {weekEnding ? new Date(weekEnding + 'T12:00:00').toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' }) : '…'}
     </div>
     <h1>How's the<br />Week Looking?</h1>
-    <p>2–3 minutes. Covers what TrainHeroic doesn't — so Ryan can adjust before next week starts.</p>
+    <p>2–3 minutes. Covers what TrainHeroic doesn't — so I can adjust before next week starts.</p>
   </div>
 
   <div class="form-wrap">
