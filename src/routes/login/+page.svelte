@@ -41,16 +41,12 @@
 </svelte:head>
 
 <div class="page">
-  <header>
-    <span class="wordmark">FRECKA FITNESS</span>
-  </header>
+  <div class="card">
+    <div class="brand">
+      <p class="eyebrow">Client Portal</p>
+      <p class="wordmark">FRECKA FITNESS</p>
+    </div>
 
-  <div class="hero">
-    <p class="eyebrow">Client Portal</p>
-    <h1>Sign In</h1>
-  </div>
-
-  <div class="form-wrap">
     <form on:submit={handleLogin}>
       <div class="field">
         <label for="email">Email <span class="req">*</span></label>
@@ -91,50 +87,39 @@
   .page {
     min-height: 100vh;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
   }
 
-  header {
+  .card {
     background: var(--black);
-    padding: 28px 40px;
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
+    width: 100%;
+    max-width: 420px;
   }
 
-  .wordmark {
-    font-family: 'Halyard Display', sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    color: var(--off-white);
-    text-transform: uppercase;
-  }
-
-  .hero {
-    background: var(--black);
-    color: var(--off-white);
+  .brand {
     text-align: center;
-    padding: 56px 24px 48px;
+    margin-bottom: 2.5rem;
   }
 
   .eyebrow {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--accent);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
-  .hero h1 {
-    font-size: clamp(32px, 6vw, 52px);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-
-  .form-wrap {
-    max-width: 480px;
-    width: 100%;
-    margin: 48px auto;
-    padding: 0 24px;
+  .wordmark {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    color: var(--off-white);
+    text-transform: uppercase;
   }
 
   form {
@@ -150,21 +135,19 @@
   }
 
   label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--mid-grey);
+    color: var(--light-grey);
   }
 
-  .req {
-    color: var(--accent);
-  }
+  .req { color: var(--accent); }
 
   input {
     width: 100%;
     background: var(--warm-white);
-    border: 1.5px solid var(--light-grey);
+    border: 1.5px solid transparent;
     border-radius: 6px;
     color: var(--black);
     font-family: 'Halyard Display', sans-serif;
@@ -175,7 +158,7 @@
   }
 
   input:focus {
-    border-color: var(--black);
+    border-color: var(--accent);
   }
 
   input::placeholder {
@@ -184,18 +167,18 @@
 
   .error {
     font-size: 13px;
-    color: var(--error);
+    color: #e07070;
   }
 
   button {
-    background: var(--black);
-    color: var(--off-white);
+    background: var(--accent);
+    color: var(--black);
     border: none;
     border-radius: 6px;
     font-family: 'Halyard Display', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     padding: 15px;
     cursor: pointer;
