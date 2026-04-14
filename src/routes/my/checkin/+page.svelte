@@ -19,7 +19,7 @@
   let nutritionAdherence = 6;
   let nutritionNotes = '';
   let forRyan = '';
-  let weekRating = 6;
+  let weekRating = 3;
 
   const SORENESS_MAP = {
     'Nothing to Flag': 1,
@@ -29,21 +29,16 @@
   };
 
   const RATINGS = {
-    1:  { label: 'Rough',         color: '#E87878' },
-    2:  { label: 'Rough',         color: '#E07070' },
-    3:  { label: 'Below Average', color: '#E8A070' },
-    4:  { label: 'Below Average', color: '#E8B860' },
-    5:  { label: 'Average',       color: '#E8C855' },
-    6:  { label: 'Good',          color: '#A0C858' },
-    7:  { label: 'Good',          color: '#90C460' },
-    8:  { label: 'Above Average', color: '#78C068' },
-    9:  { label: 'Great',         color: '#60B870' },
-    10: { label: 'Great',         color: '#48B078' },
+    1: { label: 'Rough',         color: '#E87878' },
+    2: { label: 'Below Average', color: '#E8BF60' },
+    3: { label: 'Average',       color: '#72C872' },
+    4: { label: 'Above Average', color: '#5CC4B8' },
+    5: { label: 'Great',         color: '#6888E8' },
   };
 
-  $: ratingInfo = RATINGS[weekRating] ?? RATINGS[6];
+  $: ratingInfo = RATINGS[weekRating] ?? RATINGS[3];
   $: nutritionPct = ((nutritionAdherence - 1) / 9) * 100;
-  $: ratingPct    = ((weekRating - 1) / 9) * 100;
+  $: ratingPct    = ((weekRating - 1) / 4) * 100;
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -207,7 +202,7 @@
           <label>Overall week rating <span class="req">*</span></label>
           <div class="scale-wrap">
             <span class="scale-label">Rough</span>
-            <input type="range" min="1" max="10" bind:value={weekRating}
+            <input type="range" min="1" max="5" bind:value={weekRating}
               style="background: linear-gradient(to right, {ratingInfo.color} 0%, {ratingInfo.color} {ratingPct}%, var(--light-grey) {ratingPct}%, var(--light-grey) 100%)" />
             <span class="scale-label" style="text-align:right;">Great</span>
           </div>
