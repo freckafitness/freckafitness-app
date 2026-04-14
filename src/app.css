@@ -1,0 +1,31 @@
+@font-face {
+  font-family: 'Halyard Display';
+  src: url('/fonts/HalyardDisplay.otf') format('opentype');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --black:       #253551;
+  --off-white:   #e0e0db;
+  --warm-white:  #eaeae6;
+  --accent:      #c8a96e;
+  --accent-dark: #a8893e;
+  --mid-grey:    #6a7080;
+  --light-grey:  #d0d0cb;
+  --error:       #c0392b;
+  --success:     #2d6a4f;
+}
+
+body {
+  font-family: 'Halyard Display', sans-serif;
+  background: var(--off-white);
+  color: var(--black);
+  min-height: 100vh;
+}

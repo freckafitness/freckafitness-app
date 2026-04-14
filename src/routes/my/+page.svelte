@@ -31,22 +31,67 @@
 <div class="page">
   <header>
     <span class="wordmark">FRECKA FITNESS</span>
-    <button on:click={signOut}>Sign out</button>
+    <button on:click={signOut}>Sign Out</button>
   </header>
   <main>
+    <p class="eyebrow">Client Portal</p>
     <h1>Welcome{client ? `, ${client.first_name}` : ''}</h1>
-    <p>Your check-ins and progress coming soon.</p>
+    <p class="sub">Your check-ins and progress coming soon.</p>
   </main>
 </div>
 
 <style>
-  :global(body) { background: #0d0d0d; color: #fff; font-family: 'Inter', system-ui, sans-serif; margin: 0; }
   .page { min-height: 100vh; }
-  header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 2rem; border-bottom: 1px solid #2a2a2a; }
-  .wordmark { font-size: 0.85rem; font-weight: 800; letter-spacing: 0.2em; color: #fff; }
-  button { background: none; border: 1px solid #333; color: #888; font-size: 0.8rem; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; }
-  button:hover { border-color: #555; color: #fff; }
-  main { padding: 3rem 2rem; }
-  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-  p { color: #666; }
+
+  header {
+    background: var(--black);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .wordmark {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--off-white);
+  }
+
+  button {
+    background: none;
+    border: 1px solid rgba(224,224,219,0.3);
+    color: var(--off-white);
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  button:hover { border-color: var(--off-white); }
+
+  main { padding: 48px 40px; }
+
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 8px;
+  }
+
+  .sub { color: var(--mid-grey); font-size: 15px; }
 </style>

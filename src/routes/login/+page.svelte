@@ -41,15 +41,19 @@
 </svelte:head>
 
 <div class="page">
-  <div class="card">
-    <div class="brand">
-      <span class="wordmark">FRECKA</span>
-      <span class="sub">FITNESS</span>
-    </div>
+  <header>
+    <span class="wordmark">FRECKA FITNESS</span>
+  </header>
 
+  <div class="hero">
+    <p class="eyebrow">Client Portal</p>
+    <h1>Sign In</h1>
+  </div>
+
+  <div class="form-wrap">
     <form on:submit={handleLogin}>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email">Email <span class="req">*</span></label>
         <input
           id="email"
           type="email"
@@ -61,7 +65,7 @@
       </div>
 
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">Password <span class="req">*</span></label>
         <input
           id="password"
           type="password"
@@ -84,46 +88,53 @@
 </div>
 
 <style>
-  :global(*, *::before, *::after) { box-sizing: border-box; margin: 0; padding: 0; }
-  :global(body) { background: #0d0d0d; font-family: 'Inter', system-ui, sans-serif; }
-
   .page {
     min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
+    flex-direction: column;
   }
 
-  .card {
-    width: 100%;
-    max-width: 380px;
-    background: #161616;
-    border: 1px solid #2a2a2a;
-    border-radius: 12px;
-    padding: 2.5rem 2rem;
-  }
-
-  .brand {
-    text-align: center;
-    margin-bottom: 2rem;
+  header {
+    background: var(--black);
+    padding: 28px 40px;
   }
 
   .wordmark {
-    display: block;
-    font-size: 2rem;
-    font-weight: 800;
-    letter-spacing: 0.15em;
-    color: #ffffff;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--off-white);
+    text-transform: uppercase;
   }
 
-  .sub {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.3em;
-    color: #666;
-    margin-top: 0.1rem;
+  .hero {
+    background: var(--black);
+    color: var(--off-white);
+    text-align: center;
+    padding: 56px 24px 48px;
+  }
+
+  .eyebrow {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .hero h1 {
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .form-wrap {
+    max-width: 480px;
+    width: 100%;
+    margin: 48px auto;
+    padding: 0 24px;
   }
 
   form {
@@ -139,54 +150,61 @@
   }
 
   label {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #888;
-    letter-spacing: 0.05em;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
+    color: var(--mid-grey);
+  }
+
+  .req {
+    color: var(--accent);
   }
 
   input {
-    background: #0d0d0d;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 0.95rem;
-    padding: 0.7rem 0.9rem;
+    width: 100%;
+    background: var(--warm-white);
+    border: 1.5px solid var(--light-grey);
+    border-radius: 6px;
+    color: var(--black);
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 15px;
+    padding: 13px 16px;
     outline: none;
     transition: border-color 0.15s;
   }
 
   input:focus {
-    border-color: #555;
+    border-color: var(--black);
   }
 
   input::placeholder {
-    color: #444;
+    color: var(--light-grey);
   }
 
   .error {
-    font-size: 0.85rem;
-    color: #e05555;
-    text-align: center;
+    font-size: 13px;
+    color: var(--error);
   }
 
   button {
-    background: #ffffff;
-    color: #0d0d0d;
+    background: var(--black);
+    color: var(--off-white);
     border: none;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    border-radius: 6px;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.05em;
-    padding: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 15px;
     cursor: pointer;
-    transition: opacity 0.15s;
-    margin-top: 0.25rem;
+    transition: background 0.15s;
+    margin-top: 0.5rem;
   }
 
   button:hover:not(:disabled) {
-    opacity: 0.88;
+    background: var(--accent-dark);
   }
 
   button:disabled {
