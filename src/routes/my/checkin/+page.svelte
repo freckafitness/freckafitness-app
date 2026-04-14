@@ -10,33 +10,40 @@
   let error = '';
 
   // Form fields
-  let missedSessions = 0;
+  let missedReason = '';
   let bestLift = '';
   let progressTrend = '';
   let programFeedback = '';
-  let soreness = null;
+  let soreness = '';
   let sorenessNotes = '';
   let nutritionAdherence = 6;
   let nutritionNotes = '';
   let forRyan = '';
   let weekRating = 6;
 
+  const SORENESS_MAP = {
+    'Nothing to Flag': 1,
+    'Minor Soreness': 2,
+    'Persistent Soreness or Tightness': 3,
+    'Pain — Needs Attention': 4,
+  };
+
   const RATINGS = {
-    1:  { label: 'Rough',       color: '#E05555' },
-    2:  { label: 'Tough',       color: '#E07A45' },
-    3:  { label: 'Difficult',   color: '#E09A35' },
-    4:  { label: 'Below Par',   color: '#D4B840' },
-    5:  { label: 'Okay',        color: '#C8C840' },
-    6:  { label: 'Good',        color: '#A0C858' },
-    7:  { label: 'Solid',       color: '#72BC60' },
-    8:  { label: 'Strong',      color: '#48B068' },
-    9:  { label: 'Great',       color: '#28A070' },
-    10: { label: 'Excellent',   color: '#1A9060' },
+    1:  { label: 'Rough',         color: '#E87878' },
+    2:  { label: 'Rough',         color: '#E07070' },
+    3:  { label: 'Below Average', color: '#E8A070' },
+    4:  { label: 'Below Average', color: '#E8B860' },
+    5:  { label: 'Average',       color: '#E8C855' },
+    6:  { label: 'Good',          color: '#A0C858' },
+    7:  { label: 'Good',          color: '#90C460' },
+    8:  { label: 'Above Average', color: '#78C068' },
+    9:  { label: 'Great',         color: '#60B870' },
+    10: { label: 'Great',         color: '#48B078' },
   };
 
   $: ratingInfo = RATINGS[weekRating] ?? RATINGS[6];
   $: nutritionPct = ((nutritionAdherence - 1) / 9) * 100;
-  $: ratingPct = ((weekRating - 1) / 9) * 100;
+  $: ratingPct    = ((weekRating - 1) / 9) * 100;
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -48,7 +55,7 @@
 
     // Set week ending to the coming Sunday
     const today = new Date();
-    const daysUntilSunday = (7 - today.getDay()) % 7 || 7;
+    const daysUntilSunday = today.getDay() === 0 ? 0 : 7 - today.getDay();
     const sunday = new Date(today);
     sunday.setDate(today.getDate() + daysUntilSunday);
     weekEnding = sunday.toISOString().split('T')[0];
@@ -57,18 +64,18 @@
   async function handleSubmit(e) {
     e.preventDefault();
     if (!progressTrend) { error = 'Please select how performance felt this week.'; return; }
-    if (!soreness) { error = 'Please select a soreness level.'; return; }
+    if (!soreness)      { error = 'Please select a soreness level.'; return; }
     error = '';
     loading = true;
 
     const { error: insertError } = await supabase.from('checkins').insert({
       client_id:           clientId,
       week_ending:         weekEnding,
-      missed_sessions:     missedSessions,
+      missed_sessions:     null,
       best_lift:           bestLift,
       progress_trend:      progressTrend,
-      program_feedback:    programFeedback,
-      soreness:            soreness,
+      program_feedback:    [missedReason, programFeedback].filter(Boolean).join('\n\n'),
+      soreness:            SORENESS_MAP[soreness],
       soreness_notes:      sorenessNotes,
       nutrition_adherence: nutritionAdherence,
       nutrition_notes:     nutritionNotes,
@@ -92,9 +99,11 @@
   <Header />
 
   <div class="hero">
-    <p class="week-badge">Week ending {weekEnding ? new Date(weekEnding + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '…'}</p>
+    <div class="week-badge">
+      Week ending {weekEnding ? new Date(weekEnding + 'T12:00:00').toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' }) : '…'}
+    </div>
     <h1>How's the<br />Week Looking?</h1>
-    <p class="sub">2–3 minutes. Covers what TrainHeroic doesn't — so Ryan can adjust before next week starts.</p>
+    <p>2–3 minutes. Covers what TrainHeroic doesn't — so Ryan can adjust before next week starts.</p>
   </div>
 
   <div class="form-wrap">
@@ -105,22 +114,20 @@
         <div class="section-label"><span>01</span> Training</div>
 
         <div class="field">
-          <label for="missedSessions">Sessions missed this week</label>
-          <select id="missedSessions" bind:value={missedSessions}>
-            {#each [0,1,2,3,4,5,6,7] as n}
-              <option value={n}>{n === 0 ? '0 — Hit everything' : n}</option>
-            {/each}
-          </select>
+          <label for="missedReason">If you missed sessions — what got in the way?</label>
+          <textarea id="missedReason" bind:value={missedReason}
+            placeholder="Work, illness, travel, life happened... Leave blank if you hit everything."
+            style="min-height:72px;"></textarea>
         </div>
 
         <div class="field">
-          <label for="bestLift">Best lift or performance this week <span class="req">*</span></label>
+          <label for="bestLift">Best Lift or Performance This Week <span class="req">*</span></label>
           <input type="text" id="bestLift" bind:value={bestLift}
-            placeholder="e.g. Deadlift 140kg × 3, ran 5k in 24:30, hit a new skill…" required />
+            placeholder="e.g. Deadlift 140kg × 3, ran 5k in 24:30, hit a new gymnastics skill..." required />
         </div>
 
         <div class="field">
-          <label>Compared to last week, performance felt <span class="req">*</span></label>
+          <label>Compared to Last Week, Performance Felt: <span class="req">*</span></label>
           <div class="option-group">
             {#each ['Noticeably down', 'About the same', 'Slightly better', 'Significantly better'] as opt}
               <label class="option-chip" class:selected={progressTrend === opt}>
@@ -132,28 +139,24 @@
         </div>
 
         <div class="field">
-          <label for="programFeedback">Missed sessions or exercises to flag?</label>
+          <label for="programFeedback">Any exercises or sets to flag?</label>
           <textarea id="programFeedback" bind:value={programFeedback}
-            placeholder="What got in the way, movements that felt off, weights to adjust, anything to swap…"></textarea>
+            placeholder="Movements that felt off, weights that need adjusting, anything you want swapped..."
+            style="min-height:80px;"></textarea>
         </div>
       </div>
 
-      <!-- 02 Recovery -->
+      <!-- 02 Recovery & Health -->
       <div class="form-section">
         <div class="section-label"><span>02</span> Recovery & Health</div>
 
         <div class="field">
-          <label>Soreness or pain this week <span class="req">*</span></label>
-          <div class="option-group">
-            {#each [
-              { label: 'Nothing to flag', value: 1 },
-              { label: 'Minor soreness', value: 2 },
-              { label: 'Persistent soreness or tightness', value: 3 },
-              { label: 'Pain — needs attention', value: 4 },
-            ] as opt}
-              <label class="option-chip" class:selected={soreness === opt.value}>
-                <input type="radio" bind:group={soreness} value={opt.value} />
-                {opt.label}
+          <label>Soreness, Pain or Tightness to Flag? <span class="req">*</span></label>
+          <div class="option-group option-group--column">
+            {#each Object.keys(SORENESS_MAP) as opt}
+              <label class="option-chip" class:selected={soreness === opt}>
+                <input type="radio" bind:group={soreness} value={opt} />
+                {opt}
               </label>
             {/each}
           </div>
@@ -162,7 +165,7 @@
         <div class="field">
           <label for="sorenessNotes">Details if relevant</label>
           <input type="text" id="sorenessNotes" bind:value={sorenessNotes}
-            placeholder="Location, when it started, what incites it, any restrictions…" />
+            placeholder="Location, when it started, what incites it, any restrictions that have arisen..." />
         </div>
       </div>
 
@@ -171,11 +174,11 @@
         <div class="section-label"><span>03</span> Nutrition</div>
 
         <div class="field">
-          <label>Nutrition adherence this week</label>
+          <label>How well did you hit your targets this week? <span class="req">*</span></label>
           <div class="scale-wrap">
             <span class="scale-label">Off track</span>
             <input type="range" min="1" max="10" bind:value={nutritionAdherence}
-              style="background: linear-gradient(to right, var(--black) 0%, var(--black) {nutritionPct}%, var(--light-grey) {nutritionPct}%, var(--light-grey) 100%)" />
+              style="background: linear-gradient(to right, var(--accent) 0%, var(--accent) {nutritionPct}%, var(--light-grey) {nutritionPct}%, var(--light-grey) 100%)" />
             <span class="scale-value">{nutritionAdherence}</span>
             <span class="scale-label">Dialled in</span>
           </div>
@@ -184,7 +187,8 @@
         <div class="field">
           <label for="nutritionNotes">Anything worth flagging?</label>
           <textarea id="nutritionNotes" bind:value={nutritionNotes}
-            placeholder="Missed meals, social events, big deviation from plan, appetite changes…"></textarea>
+            placeholder="Missed meals, social events, big deviation from plan, appetite changes..."
+            style="min-height:72px;"></textarea>
         </div>
       </div>
 
@@ -195,11 +199,12 @@
         <div class="field">
           <label for="forRyan">Questions or anything to address before next week?</label>
           <textarea id="forRyan" bind:value={forRyan}
-            placeholder="Program questions, technique concerns, scheduling changes — your opportunity to AMA."></textarea>
+            placeholder="Program questions, technique concerns, scheduling changes — your opportunity to AMA."
+            style="min-height:96px;"></textarea>
         </div>
 
         <div class="field">
-          <label>How would you rate this week overall?</label>
+          <label>Overall week rating <span class="req">*</span></label>
           <div class="scale-wrap">
             <span class="scale-label">Rough</span>
             <input type="range" min="1" max="10" bind:value={weekRating}
@@ -208,7 +213,7 @@
           </div>
           <div class="rating-display">
             <span class="rating-dot" style="background: {ratingInfo.color}"></span>
-            <span class="rating-label" style="color: {ratingInfo.color}">{ratingInfo.label}</span>
+            <span class="rating-label" style="color: var(--black)">{ratingInfo.label}</span>
           </div>
         </div>
       </div>
@@ -221,6 +226,7 @@
         <button type="submit" disabled={loading}>
           {loading ? 'Submitting…' : 'Submit Check-In'}
         </button>
+        <p class="submit-note">Sent directly to Ryan. He reviews check-ins every Monday.</p>
       </div>
 
     </form>
@@ -253,7 +259,7 @@
     margin-bottom: 14px;
   }
 
-  .sub {
+  .hero p {
     font-size: 15px;
     color: rgba(224,224,219,0.65);
     max-width: 440px;
@@ -298,7 +304,6 @@
   .req { color: var(--accent); }
 
   input[type="text"],
-  select,
   textarea {
     width: 100%;
     background: var(--warm-white);
@@ -313,7 +318,6 @@
   }
 
   input[type="text"]:focus,
-  select:focus,
   textarea:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(200,169,110,0.12);
@@ -329,6 +333,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .option-group--column {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .option-chip {
@@ -424,7 +433,6 @@
   .rating-label {
     font-size: 15px;
     font-weight: 600;
-    transition: color 0.2s;
   }
 
   .error {
@@ -434,9 +442,11 @@
   }
 
   .submit-wrap {
-    display: flex;
-    justify-content: center;
     margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
   }
 
   button[type="submit"] {
@@ -464,12 +474,16 @@
   button[type="submit"]::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     height: 3px;
     background: var(--accent);
   }
 
   button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .submit-note {
+    font-size: 12px;
+    color: var(--mid-grey);
+    text-align: center;
+  }
 </style>
