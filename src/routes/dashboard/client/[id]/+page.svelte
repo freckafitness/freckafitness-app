@@ -16,7 +16,7 @@
   let expanded   = {};
 
   // Chart canvas refs
-  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas;
+  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas;
   let charts = [];
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
@@ -115,10 +115,24 @@
     const ratingLabels   = { 1: 'Rough', 2: 'Below Avg', 3: 'Average', 4: 'Above Avg', 5: 'Great' };
     const sorenessLabels = { 1: 'None', 2: 'Minor', 3: 'Persistent', 4: 'Pain' };
 
-    makeChart(ratingCanvas,    'Week Rating',        sorted.map(c => c.week_rating),         '#6888E8', 1, 5,  ratingLabels);
-    makeChart(nutritionCanvas, 'Nutrition',          sorted.map(c => c.nutrition_adherence), '#c8a96e', 1, 10, null);
-    makeChart(sorenessCanvas,  'Soreness',           sorted.map(c => c.soreness),            '#E87878', 1, 4,  sorenessLabels);
-    makeChart(missedCanvas,    'Missed Sessions',    sorted.map(c => c.missed_sessions ?? 0),'#5CC4B8', 0, 4,  { 0:'0', 1:'1', 2:'2', 3:'3', 4:'>3' });
+    makeChart(ratingCanvas,      'Week Rating',      sorted.map(c => c.week_rating),         '#6888E8', 1, 5,    ratingLabels);
+    makeChart(nutritionCanvas,   'Nutrition',        sorted.map(c => c.nutrition_adherence), '#c8a96e', 1, 10,   null);
+    makeChart(sorenessCanvas,    'Soreness',         sorted.map(c => c.soreness),            '#E87878', 1, 4,    sorenessLabels);
+    makeChart(missedCanvas,      'Missed Sessions',  sorted.map(c => c.missed_sessions ?? 0),'#5CC4B8', 0, 4,    { 0:'0', 1:'1', 2:'2', 3:'3', 4:'>3' });
+    makeChart(sleepCanvas,       'Sleep (hrs)',      sorted.map(c => c.sleep_hours),         '#72C872', 1, 10,   null);
+    makeChart(bodyweightCanvas,  'Body Weight (kg)', sorted.map(c => c.bodyweight),          '#c8a96e', undefined, undefined, null);
+  }
+
+  async function toggleBodyweight() {
+    const next = !client.show_bodyweight;
+    client = { ...client, show_bodyweight: next };
+    await supabase.from('clients').update({ show_bodyweight: next }).eq('id', client.id);
+    if (checkins.length > 1) {
+      charts.forEach(c => c.destroy());
+      charts = [];
+      await new Promise(r => setTimeout(r, 0));
+      initCharts([...checkins].reverse());
+    }
   }
 
   async function saveNotes(checkinId) {
@@ -163,9 +177,15 @@
 
       <div class="top-bar">
         <a href="/dashboard" class="back">← Back to roster</a>
-        {#if intake}
-          <a href="/dashboard/intake/{intake.id}" class="btn-outline">View Intake</a>
-        {/if}
+        <div class="top-bar-actions">
+          <button class="bw-toggle" class:on={client.show_bodyweight} on:click={toggleBodyweight}>
+            <span class="bw-toggle-track" class:on={client.show_bodyweight}><span class="bw-toggle-thumb"></span></span>
+            Track body weight
+          </button>
+          {#if intake}
+            <a href="/dashboard/intake/{intake.id}" class="btn-outline">View Intake</a>
+          {/if}
+        </div>
       </div>
 
       <div class="hero-block">
@@ -204,6 +224,16 @@
             <p class="chart-label">Missed Sessions</p>
             <canvas bind:this={missedCanvas}></canvas>
           </div>
+          <div class="chart-wrap">
+            <p class="chart-label">Sleep (hrs)</p>
+            <canvas bind:this={sleepCanvas}></canvas>
+          </div>
+          {#if client?.show_bodyweight}
+          <div class="chart-wrap">
+            <p class="chart-label">Body Weight (kg)</p>
+            <canvas bind:this={bodyweightCanvas}></canvas>
+          </div>
+          {/if}
         </div>
       </section>
       {/if}
@@ -261,6 +291,18 @@
                       <span class="metric-value">{c.nutrition_adherence} / 10</span>
                     </div>
                   {/if}
+                  {#if c.sleep_hours}
+                    <div class="metric">
+                      <span class="metric-label">Sleep</span>
+                      <span class="metric-value">{c.sleep_hours} hrs</span>
+                    </div>
+                  {/if}
+                  {#if c.bodyweight}
+                    <div class="metric">
+                      <span class="metric-label">Weight</span>
+                      <span class="metric-value">{c.bodyweight} kg</span>
+                    </div>
+                  {/if}
                 </div>
 
                 <!-- Text fields -->
@@ -287,6 +329,12 @@
                     <div class="card-field card-field--full">
                       <p class="field-label">Nutrition Notes</p>
                       <p class="field-value">{c.nutrition_notes}</p>
+                    </div>
+                  {/if}
+                  {#if c.upcoming_disruptions}
+                    <div class="card-field card-field--full disruption-flag">
+                      <p class="field-label">Upcoming Disruption</p>
+                      <p class="field-value">{c.disruption_notes || 'Flagged — no details provided'}</p>
                     </div>
                   {/if}
                   {#if c.for_ryan}
@@ -359,6 +407,12 @@
   }
   .back:hover { color: var(--black); }
 
+  .top-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .btn-outline {
     font-family: 'Halyard Display', sans-serif;
     font-size: 12px;
@@ -423,6 +477,51 @@
     font-size: 13px;
     color: var(--mid-grey);
   }
+
+  .bw-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mid-grey);
+    padding: 0;
+    letter-spacing: 0.04em;
+    transition: color 0.15s;
+  }
+
+  .bw-toggle.on { color: var(--black); }
+  .bw-toggle:hover { color: var(--black); }
+
+  .bw-toggle-track {
+    width: 30px;
+    height: 16px;
+    border-radius: 8px;
+    background: var(--light-grey);
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+
+  .bw-toggle-track.on { background: var(--accent); }
+
+  .bw-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+  }
+
+  .bw-toggle-track.on .bw-toggle-thumb { transform: translateX(14px); }
 
   /* Section */
   .section-header {
@@ -610,6 +709,17 @@
   .card-field--full {
     grid-column: 1 / -1;
   }
+
+  .disruption-flag {
+    background: #fff8ec;
+    border: 1px solid rgba(200,169,110,0.35);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 4px;
+    grid-column: 1 / -1;
+  }
+
+  .disruption-flag .field-label { color: var(--accent); }
 
   .for-ryan {
     background: var(--warm-white);

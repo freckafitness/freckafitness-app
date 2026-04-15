@@ -17,8 +17,13 @@
   let programFeedback = '';
   let soreness = '';
   let sorenessNotes = '';
+  let sleepHours = 7;
+  let showBodyweight = false;
+  let bodyweight = '';
   let nutritionAdherence = 6;
   let nutritionNotes = '';
+  let upcomingDisruptions = false;
+  let disruptionNotes = '';
   let forRyan = '';
   let weekRating = 3;
 
@@ -39,10 +44,11 @@
 
   const MISSED_LABELS = { 1: '1', 2: '2', 3: '3', 4: '>3' };
 
-  $: ratingInfo  = RATINGS[weekRating] ?? RATINGS[3];
-  $: missedPct   = missedSessions > 0 ? ((missedSessions - 1) / 3) * 100 : 0;
+  $: ratingInfo   = RATINGS[weekRating] ?? RATINGS[3];
+  $: missedPct    = missedSessions > 0 ? ((missedSessions - 1) / 3) * 100 : 0;
   $: nutritionPct = ((nutritionAdherence - 1) / 9) * 100;
   $: ratingPct    = ((weekRating - 1) / 4) * 100;
+  $: sleepPct     = ((sleepHours - 1) / 9) * 100;
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -51,6 +57,9 @@
     const { data: role } = await supabase.from('user_roles').select('role, client_id').single();
     if (role?.role === 'coach') { goto('/dashboard'); return; }
     clientId = role?.client_id;
+
+    const { data: clientRow } = await supabase.from('clients').select('show_bodyweight').eq('id', role.client_id).single();
+    showBodyweight = clientRow?.show_bodyweight ?? false;
 
     // Set week ending to the coming Sunday
     const today = new Date();
@@ -74,12 +83,16 @@
       best_lift:           bestLift,
       progress_trend:      progressTrend,
       program_feedback:    [missedReason, programFeedback].filter(Boolean).join('\n\n'),
-      soreness:            SORENESS_MAP[soreness],
-      soreness_notes:      sorenessNotes,
-      nutrition_adherence: nutritionAdherence,
-      nutrition_notes:     nutritionNotes,
-      for_ryan:            forRyan,
-      week_rating:         weekRating,
+      soreness:             SORENESS_MAP[soreness],
+      soreness_notes:       sorenessNotes,
+      sleep_hours:          sleepHours,
+      bodyweight:           showBodyweight && bodyweight !== '' ? parseFloat(bodyweight) : null,
+      nutrition_adherence:  nutritionAdherence,
+      nutrition_notes:      nutritionNotes,
+      upcoming_disruptions: upcomingDisruptions,
+      disruption_notes:     upcomingDisruptions ? (disruptionNotes || null) : null,
+      for_ryan:             forRyan,
+      week_rating:          weekRating,
     });
 
     if (insertError) {
@@ -187,6 +200,26 @@
             placeholder="Location, when it started, what incites it, any restrictions that have arisen..." />
         </div>
 
+        <div class="field">
+          <label>Avg. sleep per night this week</label>
+          <div class="scale-wrap">
+            <span class="scale-label">Short</span>
+            <input type="range" min="1" max="10" step="1" bind:value={sleepHours}
+              style="background: linear-gradient(to right, var(--accent) 0%, var(--accent) {sleepPct}%, var(--light-grey) {sleepPct}%, var(--light-grey) 100%)" />
+            <span class="scale-value">{sleepHours} hrs</span>
+            <span class="scale-label">Full</span>
+          </div>
+        </div>
+
+        {#if showBodyweight}
+        <div class="field">
+          <label for="bodyweight">Morning body weight (kg)</label>
+          <input type="number" id="bodyweight" bind:value={bodyweight}
+            placeholder="e.g. 82.5" step="0.1" min="0" max="400"
+            style="max-width: 200px;" />
+        </div>
+        {/if}
+
       </div>
 
       <!-- 03 Nutrition -->
@@ -215,6 +248,28 @@
       <!-- 04 For Ryan -->
       <div class="form-section">
         <div class="section-label"><span>04</span> For Ryan</div>
+
+        <div class="field">
+          <label>Anything disrupting next week?</label>
+          <div class="option-group">
+            {#each [{ val: false, text: 'All clear' }, { val: true, text: 'Flag a disruption' }] as opt}
+              <label class="option-chip" class:selected={upcomingDisruptions === opt.val}
+                on:click={() => { upcomingDisruptions = opt.val; if (!opt.val) disruptionNotes = ''; }}>
+                <input type="radio" bind:group={upcomingDisruptions} value={opt.val} />
+                {opt.text}
+              </label>
+            {/each}
+          </div>
+        </div>
+
+        {#if upcomingDisruptions}
+        <div class="field">
+          <label for="disruptionNotes">What's coming up?</label>
+          <textarea id="disruptionNotes" bind:value={disruptionNotes}
+            placeholder="Travel, busy work week, limited gym access, event..."
+            style="min-height:72px;"></textarea>
+        </div>
+        {/if}
 
         <div class="field">
           <label for="forRyan">Questions or anything to address before next week?</label>

@@ -27,7 +27,7 @@
         .eq('auth_user_id', (await supabase.auth.getUser()).data.user.id)
         .single(),
       supabase.from('checkins')
-        .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at')
+        .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, upcoming_disruptions, disruption_notes')
         .eq('client_id', role.client_id)
         .order('week_ending', { ascending: false }),
     ]);
@@ -116,6 +116,18 @@
                     <span class="metric-value">{c.nutrition_adherence} / 10</span>
                   </div>
                 {/if}
+                {#if c.sleep_hours}
+                  <div class="metric">
+                    <span class="metric-label">Sleep</span>
+                    <span class="metric-value">{c.sleep_hours} hrs</span>
+                  </div>
+                {/if}
+                {#if c.bodyweight}
+                  <div class="metric">
+                    <span class="metric-label">Weight</span>
+                    <span class="metric-value">{c.bodyweight} kg</span>
+                  </div>
+                {/if}
               </div>
 
               <!-- Your submission -->
@@ -142,6 +154,12 @@
                   <div class="card-field card-field--full">
                     <p class="field-label">Nutrition Notes</p>
                     <p class="field-value">{c.nutrition_notes}</p>
+                  </div>
+                {/if}
+                {#if c.upcoming_disruptions}
+                  <div class="card-field card-field--full disruption-flag">
+                    <p class="field-label">Upcoming Disruption</p>
+                    <p class="field-value">{c.disruption_notes || 'Flagged — no details provided'}</p>
                   </div>
                 {/if}
                 {#if c.for_ryan}
@@ -322,6 +340,17 @@
 
   .card-field { padding: 6px 0; }
   .card-field--full { grid-column: 1 / -1; }
+
+  .disruption-flag {
+    background: #fff8ec;
+    border: 1px solid rgba(200,169,110,0.35);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 4px;
+    grid-column: 1 / -1;
+  }
+
+  .disruption-flag .field-label { color: var(--accent); }
 
   .for-me {
     background: var(--warm-white); border-radius: 4px;
