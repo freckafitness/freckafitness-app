@@ -288,8 +288,8 @@
   .week-label { font-size: 13px; font-weight: 700; color: var(--off-white); letter-spacing: 0.04em; }
 
   .chevron {
-    font-size: 18px;
-    color: var(--mid-grey);
+    font-size: 22px;
+    color: var(--accent);
     transition: transform 0.2s;
     display: inline-block;
     line-height: 1;
