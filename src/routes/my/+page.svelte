@@ -5,9 +5,10 @@
   import { supabase } from '$lib/supabase.js';
   import Header from '$lib/Header.svelte';
 
-  let client     = null;
-  let checkins   = [];
+  let client      = null;
+  let checkins    = [];
   let checkinDone = false;
+  let expanded    = new Set();
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
   const RATING_COLORS   = { 1: '#E87878', 2: '#E8BF60', 3: '#72C872', 4: '#5CC4B8', 5: '#6888E8' };
@@ -33,12 +34,19 @@
 
     client   = clientData;
     checkins = checkinData ?? [];
+    // Most recent expanded by default
+    if (checkins.length > 0) expanded = new Set([checkins[0].id]);
 
     checkinDone = $page.url.searchParams.get('checkin') === 'done';
   });
 
   function fmtDate(d) {
     return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function toggle(id) {
+    if (expanded.has(id)) { expanded.delete(id); } else { expanded.add(id); }
+    expanded = new Set(expanded);
   }
 </script>
 
@@ -69,22 +77,26 @@
           {#each checkins as c}
             <div class="checkin-card">
 
-              <!-- Header -->
-              <div class="card-header">
+              <!-- Header (always visible, toggles expand) -->
+              <button type="button" class="card-header" on:click={() => toggle(c.id)}>
                 <div class="card-header-left">
                   <span class="week-label">Week ending {fmtDate(c.week_ending)}</span>
                   {#if c.missed_sessions}
                     <span class="missed-badge">{c.missed_sessions === 4 ? '>3' : c.missed_sessions} missed</span>
                   {/if}
                 </div>
-                {#if c.week_rating}
-                  <div class="rating-chip" style="border-color: {RATING_COLORS[c.week_rating]}; color: {RATING_COLORS[c.week_rating]};">
-                    <span class="rating-dot" style="background: {RATING_COLORS[c.week_rating]};"></span>
-                    {RATING_LABELS[c.week_rating]}
-                  </div>
-                {/if}
-              </div>
+                <div class="card-header-right">
+                  {#if c.week_rating}
+                    <div class="rating-chip" style="border-color: {RATING_COLORS[c.week_rating]}; color: {RATING_COLORS[c.week_rating]};">
+                      <span class="rating-dot" style="background: {RATING_COLORS[c.week_rating]};"></span>
+                      {RATING_LABELS[c.week_rating]}
+                    </div>
+                  {/if}
+                  <span class="chevron" class:open={expanded.has(c.id)}>›</span>
+                </div>
+              </button>
 
+              {#if expanded.has(c.id)}
               <!-- Quick metrics -->
               <div class="metrics-row">
                 {#if c.progress_trend}
@@ -147,6 +159,7 @@
                   <p class="coach-note-label">Ryan's Notes</p>
                   <p class="coach-note-text">{c.coach_notes}</p>
                 </div>
+              {/if}
               {/if}
 
             </div>
@@ -261,11 +274,28 @@
     padding: 14px 18px;
     background: var(--black);
     gap: 12px;
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    font-family: 'Halyard Display', sans-serif;
+    text-align: left;
   }
 
-  .card-header-left { display: flex; align-items: center; gap: 10px; }
+  .card-header:hover { background: #1f2f45; }
+
+  .card-header-left  { display: flex; align-items: center; gap: 10px; }
+  .card-header-right { display: flex; align-items: center; gap: 10px; }
 
   .week-label { font-size: 13px; font-weight: 700; color: var(--off-white); letter-spacing: 0.04em; }
+
+  .chevron {
+    font-size: 18px;
+    color: var(--mid-grey);
+    transition: transform 0.2s;
+    display: inline-block;
+    line-height: 1;
+  }
+  .chevron.open { transform: rotate(90deg); }
 
   .missed-badge {
     font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
