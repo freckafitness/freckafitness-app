@@ -10,8 +10,8 @@
   let intake   = null;
   let loading  = true;
 
-  // Coach notes state per check-in
-  let notesState = {};   // { [checkin_id]: { text, saving, saved } }
+  let notesState = {};
+  let expanded   = {};
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
   const RATING_COLORS   = { 1: '#E87878', 2: '#E8BF60', 3: '#72C872', 4: '#5CC4B8', 5: '#6888E8' };
@@ -39,6 +39,8 @@
       notesState[c.id] = { text: c.coach_notes ?? '', saving: false, saved: false };
     });
 
+    if (checkins.length > 0) expanded = { [checkins[0].id]: true };
+
     loading = false;
   });
 
@@ -55,6 +57,10 @@
       notesState[checkinId].saved = false;
       notesState = { ...notesState };
     }, 2500);
+  }
+
+  function toggle(id) {
+    expanded = { ...expanded, [id]: !expanded[id] };
   }
 
   function fmtDate(d) {
@@ -112,21 +118,25 @@
               <div class="checkin-card">
 
                 <!-- Card header -->
-                <div class="card-header">
+                <button type="button" class="card-header" on:click={() => toggle(c.id)}>
                   <div class="card-header-left">
                     <span class="week-label">Week ending {fmtDate(c.week_ending)}</span>
                     {#if c.missed_sessions}
                       <span class="missed-badge">{c.missed_sessions === 4 ? '>3' : c.missed_sessions} missed</span>
                     {/if}
                   </div>
-                  {#if c.week_rating}
-                    <div class="rating-chip" style="border-color: {RATING_COLORS[c.week_rating]}; color: {RATING_COLORS[c.week_rating]};">
-                      <span class="rating-dot" style="background: {RATING_COLORS[c.week_rating]};"></span>
-                      {RATING_LABELS[c.week_rating]}
-                    </div>
-                  {/if}
-                </div>
+                  <div class="card-header-right">
+                    {#if c.week_rating}
+                      <div class="rating-chip" style="border-color: {RATING_COLORS[c.week_rating]}; color: {RATING_COLORS[c.week_rating]};">
+                        <span class="rating-dot" style="background: {RATING_COLORS[c.week_rating]};"></span>
+                        {RATING_LABELS[c.week_rating]}
+                      </div>
+                    {/if}
+                    <span class="chevron" class:open={expanded[c.id]}>›</span>
+                  </div>
+                </button>
 
+                {#if expanded[c.id]}
                 <!-- Quick metrics -->
                 <div class="metrics-row">
                   {#if c.progress_trend}
@@ -203,6 +213,7 @@
                       <button type="button" class="btn-save" on:click={() => saveNotes(c.id)} disabled={notesState[c.id].saving}>Save</button>
                     </div>
                   </div>
+                {/if}
                 {/if}
 
               </div>
@@ -359,13 +370,26 @@
     padding: 14px 18px;
     background: var(--black);
     gap: 12px;
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    font-family: 'Halyard Display', sans-serif;
+    text-align: left;
   }
 
-  .card-header-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  .card-header:hover { background: #1f2f45; }
+
+  .card-header-left  { display: flex; align-items: center; gap: 10px; }
+  .card-header-right { display: flex; align-items: center; gap: 10px; }
+
+  .chevron {
+    font-size: 22px;
+    color: var(--accent);
+    transition: transform 0.2s;
+    display: inline-block;
+    line-height: 1;
   }
+  .chevron.open { transform: rotate(90deg); }
 
   .week-label {
     font-size: 13px;
