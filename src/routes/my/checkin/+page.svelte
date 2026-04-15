@@ -215,8 +215,7 @@
         <div class="field">
           <label for="bodyweight">Morning body weight (kg)</label>
           <input type="number" id="bodyweight" bind:value={bodyweight}
-            placeholder="e.g. 82.5" step="0.1" min="0" max="400"
-            style="max-width: 200px;" />
+            placeholder="e.g. 82.5" step="0.1" min="0" max="400" />
         </div>
         {/if}
 
@@ -379,6 +378,7 @@
   .req { color: var(--accent); }
 
   input[type="text"],
+  input[type="number"],
   textarea {
     width: 100%;
     background: var(--warm-white);
@@ -393,13 +393,20 @@
   }
 
   input[type="text"]:focus,
+  input[type="number"]:focus,
   textarea:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(200,169,110,0.12);
   }
 
   input[type="text"]::placeholder,
+  input[type="number"]::placeholder,
   textarea::placeholder { color: var(--mid-grey); }
+
+  /* Remove number input spinners */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
 
   textarea { resize: vertical; min-height: 88px; line-height: 1.55; }
 
