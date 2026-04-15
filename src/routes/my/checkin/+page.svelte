@@ -186,6 +186,7 @@
           <input type="text" id="sorenessNotes" bind:value={sorenessNotes}
             placeholder="Location, when it started, what incites it, any restrictions that have arisen..." />
         </div>
+
       </div>
 
       <!-- 03 Nutrition -->
