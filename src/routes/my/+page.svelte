@@ -8,7 +8,7 @@
   let client      = null;
   let checkins    = [];
   let checkinDone = false;
-  let expanded    = new Set();
+  let expanded    = {};
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
   const RATING_COLORS   = { 1: '#E87878', 2: '#E8BF60', 3: '#72C872', 4: '#5CC4B8', 5: '#6888E8' };
@@ -35,7 +35,7 @@
     client   = clientData;
     checkins = checkinData ?? [];
     // Most recent expanded by default
-    if (checkins.length > 0) expanded = new Set([checkins[0].id]);
+    if (checkins.length > 0) expanded = { [checkins[0].id]: true };
 
     checkinDone = $page.url.searchParams.get('checkin') === 'done';
   });
@@ -45,8 +45,7 @@
   }
 
   function toggle(id) {
-    if (expanded.has(id)) { expanded.delete(id); } else { expanded.add(id); }
-    expanded = new Set(expanded);
+    expanded = { ...expanded, [id]: !expanded[id] };
   }
 </script>
 
@@ -92,11 +91,11 @@
                       {RATING_LABELS[c.week_rating]}
                     </div>
                   {/if}
-                  <span class="chevron" class:open={expanded.has(c.id)}>›</span>
+                  <span class="chevron" class:open={expanded[c.id]}>›</span>
                 </div>
               </button>
 
-              {#if expanded.has(c.id)}
+              {#if expanded[c.id]}
               <!-- Quick metrics -->
               <div class="metrics-row">
                 {#if c.progress_trend}
