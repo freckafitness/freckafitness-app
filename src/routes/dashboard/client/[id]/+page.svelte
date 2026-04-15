@@ -120,7 +120,7 @@
                     {/if}
                   </div>
                   {#if c.week_rating}
-                    <div class="rating-chip" style="background: {RATING_COLORS[c.week_rating]}22; border-color: {RATING_COLORS[c.week_rating]};">
+                    <div class="rating-chip" style="border-color: {RATING_COLORS[c.week_rating]}; color: {RATING_COLORS[c.week_rating]};">
                       <span class="rating-dot" style="background: {RATING_COLORS[c.week_rating]};"></span>
                       {RATING_LABELS[c.week_rating]}
                     </div>
@@ -391,12 +391,11 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    font-weight: 600;
-    padding: 4px 10px;
+    font-weight: 700;
+    padding: 4px 12px;
     border-radius: 20px;
-    border: 1px solid;
+    border: 1.5px solid;
     white-space: nowrap;
-    color: var(--black);
     background: white;
   }
 
