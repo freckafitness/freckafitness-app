@@ -197,37 +197,35 @@
           <span class="chevron" class:open={chartsOpen}>›</span>
         </button>
 
-        {#if chartsOpen}
-          <div class="insights-body">
-            <div class="habit-web-block">
-              <p class="web-subtitle">4-week rolling average — the fuller the web, the more well-rounded your consistency.</p>
-              <div class="radar-wrap">
-                <canvas bind:this={radarCanvas}></canvas>
+        <div class="insights-body" class:hidden={!chartsOpen}>
+          <div class="habit-web-block">
+            <p class="web-subtitle">4-week rolling average — the fuller the web, the more well-rounded your consistency.</p>
+            <div class="radar-wrap">
+              <canvas bind:this={radarCanvas}></canvas>
+            </div>
+          </div>
+
+          {#if checkins.length > 1}
+            <div class="charts-grid">
+              <div class="chart-wrap">
+                <p class="chart-label">Week Rating</p>
+                <canvas bind:this={ratingCanvas}></canvas>
+              </div>
+              <div class="chart-wrap">
+                <p class="chart-label">Missed Sessions</p>
+                <canvas bind:this={missedCanvas}></canvas>
+              </div>
+              <div class="chart-wrap">
+                <p class="chart-label">Nutrition Adherence</p>
+                <canvas bind:this={nutritionCanvas}></canvas>
+              </div>
+              <div class="chart-wrap">
+                <p class="chart-label">Sleep (hrs)</p>
+                <canvas bind:this={sleepCanvas}></canvas>
               </div>
             </div>
-
-            {#if checkins.length > 1}
-              <div class="charts-grid">
-                <div class="chart-wrap">
-                  <p class="chart-label">Week Rating</p>
-                  <canvas bind:this={ratingCanvas}></canvas>
-                </div>
-                <div class="chart-wrap">
-                  <p class="chart-label">Missed Sessions</p>
-                  <canvas bind:this={missedCanvas}></canvas>
-                </div>
-                <div class="chart-wrap">
-                  <p class="chart-label">Nutrition Adherence</p>
-                  <canvas bind:this={nutritionCanvas}></canvas>
-                </div>
-                <div class="chart-wrap">
-                  <p class="chart-label">Sleep (hrs)</p>
-                  <canvas bind:this={sleepCanvas}></canvas>
-                </div>
-              </div>
-            {/if}
-          </div>
-        {/if}
+          {/if}
+        </div>
       </section>
     {/if}
 
@@ -440,6 +438,7 @@
   .section-toggle:hover { color: var(--accent); }
 
   .insights-body { display: flex; flex-direction: column; gap: 32px; }
+  .insights-body.hidden { display: none; }
 
   .habit-web-block { display: flex; flex-direction: column; align-items: center; }
 
