@@ -12,8 +12,9 @@
   let intake   = null;
   let loading  = true;
 
-  let notesState = {};
-  let expanded   = {};
+  let notesState   = {};
+  let expanded     = {};
+  let displayUnit  = 'kg';
 
   // Chart canvas refs
   let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas;
@@ -46,6 +47,7 @@
     });
 
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
+    displayUnit = c?.weight_unit ?? 'kg';
 
     loading = false;
 
@@ -119,8 +121,28 @@
     makeChart(nutritionCanvas,   'Nutrition',        sorted.map(c => c.nutrition_adherence), '#c8a96e', 1, 10,   null);
     makeChart(sorenessCanvas,    'Soreness',         sorted.map(c => c.soreness),            '#E87878', 1, 4,    sorenessLabels);
     makeChart(missedCanvas,      'Missed Sessions',  sorted.map(c => c.missed_sessions ?? 0),'#5CC4B8', 0, 4,    { 0:'0', 1:'1', 2:'2', 3:'3', 4:'>3' });
-    makeChart(sleepCanvas,       'Sleep (hrs)',      sorted.map(c => c.sleep_hours),         '#72C872', 1, 10,   null);
-    makeChart(bodyweightCanvas,  'Body Weight (kg)', sorted.map(c => c.bodyweight),          '#c8a96e', undefined, undefined, null);
+    makeChart(sleepCanvas,      'Sleep (hrs)',             sorted.map(c => c.sleep_hours), '#72C872', 1, 10, null);
+    const bwData = sorted.map(c => c.bodyweight == null ? null
+      : displayUnit === 'lbs' ? parseFloat((c.bodyweight * 2.2046).toFixed(1)) : c.bodyweight);
+    makeChart(bodyweightCanvas, `Body Weight (${displayUnit})`, bwData, '#c8a96e', undefined, undefined, null);
+  }
+
+  async function switchDisplayUnit(u) {
+    if (displayUnit === u) return;
+    displayUnit = u;
+    if (checkins.length > 1) {
+      charts.forEach(c => c.destroy());
+      charts = [];
+      await new Promise(r => setTimeout(r, 0));
+      initCharts([...checkins].reverse());
+    }
+  }
+
+  function fmtWeight(kg) {
+    if (kg == null) return null;
+    return displayUnit === 'lbs'
+      ? (kg * 2.2046).toFixed(1) + ' lbs'
+      : kg + ' kg';
   }
 
   async function toggleBodyweight() {
@@ -230,7 +252,15 @@
           </div>
           {#if client?.show_bodyweight}
           <div class="chart-wrap">
-            <p class="chart-label">Body Weight (kg)</p>
+            <div class="chart-label-row">
+              <p class="chart-label">Body Weight</p>
+              <div class="unit-toggle">
+                {#each ['kg', 'lbs'] as u}
+                  <button type="button" class="unit-btn" class:active={displayUnit === u}
+                    on:click={() => switchDisplayUnit(u)}>{u}</button>
+                {/each}
+              </div>
+            </div>
             <canvas bind:this={bodyweightCanvas}></canvas>
           </div>
           {/if}
@@ -300,7 +330,7 @@
                   {#if c.bodyweight}
                     <div class="metric">
                       <span class="metric-label">Weight</span>
-                      <span class="metric-value">{c.bodyweight} kg</span>
+                      <span class="metric-value">{fmtWeight(c.bodyweight)}</span>
                     </div>
                   {/if}
                 </div>
@@ -571,6 +601,38 @@
     border: 1px solid var(--light-grey);
     border-radius: 8px;
     padding: 16px 18px 12px;
+  }
+
+  .chart-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .chart-label-row .chart-label { margin-bottom: 0; }
+
+  .unit-toggle { display: flex; gap: 3px; }
+
+  .unit-btn {
+    background: none;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 4px;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    padding: 2px 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .unit-btn.active {
+    background: var(--black);
+    border-color: var(--black);
+    color: var(--off-white);
   }
 
   .chart-label {

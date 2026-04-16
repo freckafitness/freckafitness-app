@@ -20,6 +20,7 @@
   let sleepHours = 7;
   let showBodyweight = false;
   let bodyweight = '';
+  let weightUnit = 'kg';
   let nutritionAdherence = 6;
   let nutritionNotes = '';
   let upcomingDisruptions = false;
@@ -58,8 +59,9 @@
     if (role?.role === 'coach') { goto('/dashboard'); return; }
     clientId = role?.client_id;
 
-    const { data: clientRow } = await supabase.from('clients').select('show_bodyweight').eq('id', role.client_id).single();
+    const { data: clientRow } = await supabase.from('clients').select('show_bodyweight, weight_unit').eq('id', role.client_id).single();
     showBodyweight = clientRow?.show_bodyweight ?? false;
+    weightUnit     = clientRow?.weight_unit ?? 'kg';
 
     // Set week ending to the coming Sunday
     const today = new Date();
@@ -68,6 +70,20 @@
     sunday.setDate(today.getDate() + daysUntilSunday);
     weekEnding = sunday.toISOString().split('T')[0];
   });
+
+  async function switchUnit(u) {
+    if (weightUnit === u) return;
+    if (bodyweight !== '') {
+      const val = parseFloat(bodyweight);
+      if (!isNaN(val)) {
+        bodyweight = u === 'lbs'
+          ? (val * 2.2046).toFixed(1)
+          : (val / 2.2046).toFixed(1);
+      }
+    }
+    weightUnit = u;
+    await supabase.from('clients').update({ weight_unit: u }).eq('id', clientId);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -86,7 +102,9 @@
       soreness:             SORENESS_MAP[soreness],
       soreness_notes:       sorenessNotes,
       sleep_hours:          sleepHours,
-      bodyweight:           showBodyweight && bodyweight !== '' ? parseFloat(bodyweight) : null,
+      bodyweight:           showBodyweight && bodyweight !== ''
+                              ? parseFloat(weightUnit === 'lbs' ? (parseFloat(bodyweight) / 2.2046).toFixed(1) : bodyweight)
+                              : null,
       nutrition_adherence:  nutritionAdherence,
       nutrition_notes:      nutritionNotes,
       upcoming_disruptions: upcomingDisruptions,
@@ -213,9 +231,17 @@
 
         {#if showBodyweight}
         <div class="field">
-          <label for="bodyweight">Morning body weight (kg)</label>
+          <div class="bw-field-header">
+            <label for="bodyweight">Morning body weight</label>
+            <div class="unit-toggle">
+              {#each ['kg', 'lbs'] as u}
+                <button type="button" class="unit-btn" class:active={weightUnit === u}
+                  on:click={() => switchUnit(u)}>{u}</button>
+              {/each}
+            </div>
+          </div>
           <input type="number" id="bodyweight" bind:value={bodyweight}
-            placeholder="e.g. 82.5" step="0.1" min="0" max="400" />
+            placeholder={weightUnit === 'lbs' ? 'e.g. 182' : 'e.g. 82.5'} step="0.1" min="0" max="1500" />
         </div>
         {/if}
 
@@ -402,6 +428,39 @@
   input[type="text"]::placeholder,
   input[type="number"]::placeholder,
   textarea::placeholder { color: var(--mid-grey); }
+
+  /* Bodyweight field header with unit toggle */
+  .bw-field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .bw-field-header label { margin-bottom: 0; }
+
+  .unit-toggle { display: flex; gap: 3px; }
+
+  .unit-btn {
+    background: none;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 4px;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .unit-btn.active {
+    background: var(--black);
+    border-color: var(--black);
+    color: var(--off-white);
+  }
 
   /* Remove number input spinners */
   input[type="number"]::-webkit-outer-spin-button,

@@ -6,6 +6,7 @@
   import Header from '$lib/Header.svelte';
 
   let client      = null;
+  let weightUnit  = 'kg';
   let checkins    = [];
   let checkinDone = false;
   let expanded    = {};
@@ -23,7 +24,7 @@
 
     const [{ data: clientData }, { data: checkinData }] = await Promise.all([
       supabase.from('clients')
-        .select('first_name, last_name')
+        .select('first_name, last_name, weight_unit')
         .eq('auth_user_id', (await supabase.auth.getUser()).data.user.id)
         .single(),
       supabase.from('checkins')
@@ -32,7 +33,8 @@
         .order('week_ending', { ascending: false }),
     ]);
 
-    client   = clientData;
+    client     = clientData;
+    weightUnit = clientData?.weight_unit ?? 'kg';
     checkins = checkinData ?? [];
     // Most recent expanded by default
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
@@ -125,7 +127,9 @@
                 {#if c.bodyweight}
                   <div class="metric">
                     <span class="metric-label">Weight</span>
-                    <span class="metric-value">{c.bodyweight} kg</span>
+                    <span class="metric-value">
+                      {weightUnit === 'lbs' ? (c.bodyweight * 2.2046).toFixed(1) + ' lbs' : c.bodyweight + ' kg'}
+                    </span>
                   </div>
                 {/if}
               </div>
