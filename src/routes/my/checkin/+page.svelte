@@ -8,6 +8,7 @@
   let weekEnding = '';
   let loading = false;
   let error = '';
+  let alreadySubmitted = false;
 
   // Form fields
   let missedSessions = 0;
@@ -31,7 +32,7 @@
   const SORENESS_MAP = {
     'Nothing to Flag': 1,
     'Minor Soreness': 2,
-    'Persistent Soreness or Tightness': 3,
+    'Persistent Soreness': 3,
     'Pain — Needs Attention': 4,
   };
 
@@ -59,16 +60,21 @@
     if (role?.role === 'coach') { goto('/dashboard'); return; }
     clientId = role?.client_id;
 
-    const { data: clientRow } = await supabase.from('clients').select('show_bodyweight, weight_unit').eq('id', role.client_id).single();
-    showBodyweight = clientRow?.show_bodyweight ?? false;
-    weightUnit     = clientRow?.weight_unit ?? 'kg';
-
-    // Set week ending to the coming Sunday
+    // Calculate week ending first (needed for duplicate check)
     const today = new Date();
     const daysUntilSunday = today.getDay() === 0 ? 0 : 7 - today.getDay();
     const sunday = new Date(today);
     sunday.setDate(today.getDate() + daysUntilSunday);
     weekEnding = sunday.toISOString().split('T')[0];
+
+    const [{ data: clientRow }, { data: existing }] = await Promise.all([
+      supabase.from('clients').select('show_bodyweight, weight_unit').eq('id', role.client_id).single(),
+      supabase.from('checkins').select('id').eq('client_id', clientId).eq('week_ending', weekEnding).maybeSingle(),
+    ]);
+
+    showBodyweight   = clientRow?.show_bodyweight ?? false;
+    weightUnit       = clientRow?.weight_unit ?? 'kg';
+    alreadySubmitted = !!existing;
   });
 
   async function switchUnit(u) {
@@ -137,6 +143,15 @@
   </div>
 
   <div class="form-wrap">
+
+    {#if alreadySubmitted}
+      <div class="already-submitted">
+        <p class="already-title">Already submitted</p>
+        <p class="already-body">You've already sent a check-in for the week ending {weekEnding ? new Date(weekEnding + 'T12:00:00').toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' }) : 'this week'}. I'll review it and respond before next week.</p>
+        <a href="/my" class="btn-back">← Back to Portal</a>
+      </div>
+    {:else}
+
     <form on:submit={handleSubmit}>
 
       <!-- 01 Training -->
@@ -330,6 +345,8 @@
       </div>
 
     </form>
+    {/if}
+
   </div>
 </div>
 
@@ -643,4 +660,43 @@
     color: var(--mid-grey);
     text-align: center;
   }
+
+  .already-submitted {
+    text-align: center;
+    padding: 48px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .already-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--black);
+  }
+
+  .already-body {
+    font-size: 15px;
+    color: var(--mid-grey);
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .btn-back {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--black);
+    text-decoration: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 8px 18px;
+    transition: border-color 0.15s;
+    margin-top: 8px;
+  }
+
+  .btn-back:hover { border-color: var(--black); }
 </style>

@@ -25,7 +25,7 @@
     const [{ data: clientData }, { data: checkinData }] = await Promise.all([
       supabase.from('clients')
         .select('first_name, last_name, weight_unit')
-        .eq('auth_user_id', (await supabase.auth.getUser()).data.user.id)
+        .eq('id', role.client_id)
         .single(),
       supabase.from('checkins')
         .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, upcoming_disruptions, disruption_notes')
