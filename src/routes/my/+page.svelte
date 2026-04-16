@@ -4,12 +4,17 @@
   import { page } from '$app/stores';
   import { supabase } from '$lib/supabase.js';
   import Header from '$lib/Header.svelte';
+  import { Chart, registerables } from 'chart.js';
+  Chart.register(...registerables);
 
   let client      = null;
   let weightUnit  = 'kg';
   let checkins    = [];
   let checkinDone = false;
   let expanded    = {};
+
+  let ratingCanvas, missedCanvas, nutritionCanvas, sleepCanvas;
+  let charts = [];
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
   const RATING_COLORS   = { 1: '#E87878', 2: '#E8BF60', 3: '#72C872', 4: '#5CC4B8', 5: '#6888E8' };
@@ -40,7 +45,65 @@
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
 
     checkinDone = $page.url.searchParams.get('checkin') === 'done';
+
+    if (checkins.length > 1) {
+      await new Promise(r => setTimeout(r, 0));
+      initCharts([...checkins].reverse());
+    }
   });
+
+  function initCharts(sorted) {
+    charts.forEach(c => c.destroy());
+    charts = [];
+
+    const labels = sorted.map(c =>
+      new Date(c.week_ending + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    );
+
+    const defaults = {
+      tension: 0.35,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      borderWidth: 2,
+      fill: true,
+    };
+
+    const gridColor = 'rgba(0,0,0,0.06)';
+    const tickColor = '#6a7080';
+
+    function makeChart(canvas, label, data, color, yMin, yMax, yLabels) {
+      if (!canvas) return;
+      const chart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ label, data, borderColor: color, pointBackgroundColor: color,
+            backgroundColor: color + '18', ...defaults }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: {
+            callbacks: { label: ctx => yLabels ? (yLabels[ctx.raw] ?? ctx.raw) : ctx.raw }
+          }},
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 } } },
+            y: { min: yMin, max: yMax, grid: { color: gridColor },
+              ticks: { color: tickColor, font: { size: 11 }, stepSize: 1,
+                callback: v => yLabels ? (yLabels[v] ?? v) : v } }
+          }
+        }
+      });
+      charts.push(chart);
+    }
+
+    const ratingLabels = { 1: 'Rough', 2: 'Below Avg', 3: 'Average', 4: 'Above Avg', 5: 'Great' };
+
+    makeChart(ratingCanvas,    'Week Rating',         sorted.map(c => c.week_rating),          '#6888E8', 1, 5,  ratingLabels);
+    makeChart(missedCanvas,    'Missed Sessions',     sorted.map(c => c.missed_sessions ?? 0), '#5CC4B8', 0, 4,  { 0:'0', 1:'1', 2:'2', 3:'3', 4:'>3' });
+    makeChart(nutritionCanvas, 'Nutrition Adherence', sorted.map(c => c.nutrition_adherence),  '#c8a96e', 1, 10, null);
+    makeChart(sleepCanvas,     'Sleep (hrs)',         sorted.map(c => c.sleep_hours),          '#72C872', 1, 10, null);
+  }
 
   function fmtDate(d) {
     return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -68,6 +131,31 @@
     <div class="actions">
       <a href="/my/checkin" class="btn-primary">Submit Weekly Check-In</a>
     </div>
+
+    <!-- Trend charts -->
+    {#if checkins.length > 1}
+      <section class="trends">
+        <h2>Your Trends</h2>
+        <div class="charts-grid">
+          <div class="chart-wrap">
+            <p class="chart-label">Week Rating</p>
+            <canvas bind:this={ratingCanvas}></canvas>
+          </div>
+          <div class="chart-wrap">
+            <p class="chart-label">Missed Sessions</p>
+            <canvas bind:this={missedCanvas}></canvas>
+          </div>
+          <div class="chart-wrap">
+            <p class="chart-label">Nutrition Adherence</p>
+            <canvas bind:this={nutritionCanvas}></canvas>
+          </div>
+          <div class="chart-wrap">
+            <p class="chart-label">Sleep (hrs)</p>
+            <canvas bind:this={sleepCanvas}></canvas>
+          </div>
+        </div>
+      </section>
+    {/if}
 
     <!-- Check-in history -->
     {#if checkins.length > 0}
@@ -251,6 +339,37 @@
   }
 
   .btn-primary:hover { background: #1f2f45; }
+
+  /* Trends */
+  .trends { margin-bottom: 40px; }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 600px) {
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+
+  .chart-wrap {
+    background: white;
+    border: 1px solid var(--light-grey);
+    border-radius: 8px;
+    padding: 16px 18px 12px;
+  }
+
+  .chart-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    margin-bottom: 12px;
+  }
+
+  .chart-wrap canvas { height: 160px !important; }
 
   /* Section */
   section { margin-top: 8px; }
