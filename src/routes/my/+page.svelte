@@ -15,6 +15,7 @@
 
   let ratingCanvas, missedCanvas, nutritionCanvas, sleepCanvas, radarCanvas;
   let charts = [];
+  let chartsOpen = true;
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
   const RATING_COLORS   = { 1: '#E87878', 2: '#E8BF60', 3: '#72C872', 4: '#5CC4B8', 5: '#6888E8' };
@@ -188,39 +189,45 @@
       <a href="/my/checkin" class="btn-primary">Submit Weekly Check-In</a>
     </div>
 
-    <!-- Habit web -->
+    <!-- Habit web + Trend charts -->
     {#if checkins.length >= 1}
-      <section class="habit-web-section">
-        <h2>Your Habit Web</h2>
-        <p class="web-subtitle">4-week rolling average across key habits — the fuller the web, the more well-rounded your consistency.</p>
-        <div class="radar-wrap">
-          <canvas bind:this={radarCanvas}></canvas>
-        </div>
-      </section>
-    {/if}
+      <section class="insights-section">
+        <button type="button" class="section-toggle" on:click={() => chartsOpen = !chartsOpen}>
+          <span>Your Progress</span>
+          <span class="chevron" class:open={chartsOpen}>›</span>
+        </button>
 
-    <!-- Trend charts -->
-    {#if checkins.length > 1}
-      <section class="trends">
-        <h2>Your Trends</h2>
-        <div class="charts-grid">
-          <div class="chart-wrap">
-            <p class="chart-label">Week Rating</p>
-            <canvas bind:this={ratingCanvas}></canvas>
+        {#if chartsOpen}
+          <div class="insights-body">
+            <div class="habit-web-block">
+              <p class="web-subtitle">4-week rolling average — the fuller the web, the more well-rounded your consistency.</p>
+              <div class="radar-wrap">
+                <canvas bind:this={radarCanvas}></canvas>
+              </div>
+            </div>
+
+            {#if checkins.length > 1}
+              <div class="charts-grid">
+                <div class="chart-wrap">
+                  <p class="chart-label">Week Rating</p>
+                  <canvas bind:this={ratingCanvas}></canvas>
+                </div>
+                <div class="chart-wrap">
+                  <p class="chart-label">Missed Sessions</p>
+                  <canvas bind:this={missedCanvas}></canvas>
+                </div>
+                <div class="chart-wrap">
+                  <p class="chart-label">Nutrition Adherence</p>
+                  <canvas bind:this={nutritionCanvas}></canvas>
+                </div>
+                <div class="chart-wrap">
+                  <p class="chart-label">Sleep (hrs)</p>
+                  <canvas bind:this={sleepCanvas}></canvas>
+                </div>
+              </div>
+            {/if}
           </div>
-          <div class="chart-wrap">
-            <p class="chart-label">Missed Sessions</p>
-            <canvas bind:this={missedCanvas}></canvas>
-          </div>
-          <div class="chart-wrap">
-            <p class="chart-label">Nutrition Adherence</p>
-            <canvas bind:this={nutritionCanvas}></canvas>
-          </div>
-          <div class="chart-wrap">
-            <p class="chart-label">Sleep (hrs)</p>
-            <canvas bind:this={sleepCanvas}></canvas>
-          </div>
-        </div>
+        {/if}
       </section>
     {/if}
 
@@ -407,15 +414,41 @@
 
   .btn-primary:hover { background: #1f2f45; }
 
-  /* Habit web */
-  .habit-web-section { margin-bottom: 40px; }
+  /* Insights (habit web + trends) */
+  .insights-section { margin-bottom: 40px; }
+
+  .section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--light-grey);
+    padding-bottom: 10px;
+    margin-bottom: 24px;
+    cursor: pointer;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--black);
+    text-align: left;
+  }
+
+  .section-toggle:hover { color: var(--accent); }
+
+  .insights-body { display: flex; flex-direction: column; gap: 32px; }
+
+  .habit-web-block { display: flex; flex-direction: column; align-items: center; }
 
   .web-subtitle {
     font-size: 13px;
     color: var(--mid-grey);
-    margin-top: -14px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     line-height: 1.5;
+    text-align: center;
   }
 
   .radar-wrap {
@@ -423,12 +456,9 @@
     border: 1px solid var(--light-grey);
     border-radius: 8px;
     padding: 24px;
+    width: 100%;
     max-width: 380px;
-    margin: 0 auto;
   }
-
-  /* Trends */
-  .trends { margin-bottom: 40px; }
 
   .charts-grid {
     display: grid;
