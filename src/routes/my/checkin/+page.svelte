@@ -516,13 +516,14 @@
   }
 
   .scale-label {
-    font-size: 11px;
-    color: var(--mid-grey);
+    font-size: 13px;
+    color: var(--black);
     white-space: nowrap;
     text-transform: none;
     letter-spacing: 0;
-    font-weight: 400;
+    font-weight: 500;
     margin-bottom: 0;
+    opacity: 0.55;
   }
 
   .scale-value {
