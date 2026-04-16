@@ -69,12 +69,12 @@
 
     const [{ data: clientRow }, { data: existing }] = await Promise.all([
       supabase.from('clients').select('show_bodyweight, weight_unit').eq('id', role.client_id).single(),
-      supabase.from('checkins').select('id').eq('client_id', clientId).eq('week_ending', weekEnding).maybeSingle(),
+      supabase.from('checkins').select('id').eq('client_id', clientId).eq('week_ending', weekEnding).limit(1),
     ]);
 
     showBodyweight   = clientRow?.show_bodyweight ?? false;
     weightUnit       = clientRow?.weight_unit ?? 'kg';
-    alreadySubmitted = !!existing;
+    alreadySubmitted = (existing?.length ?? 0) > 0;
   });
 
   async function switchUnit(u) {
