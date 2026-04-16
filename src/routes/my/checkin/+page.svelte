@@ -58,7 +58,7 @@
     if (!session) { goto('/login'); return; }
 
     const { data: role } = await supabase.from('user_roles').select('role, client_id').single();
-    isPreview = role?.role === 'coach' && $page.url.searchParams.get('preview') === 'true';
+    isPreview = role?.role === 'coach' && new URLSearchParams(window.location.search).get('preview') === 'true';
     if (role?.role === 'coach' && !isPreview) { goto('/dashboard'); return; }
     clientId = role?.client_id;
 
