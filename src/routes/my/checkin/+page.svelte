@@ -387,7 +387,7 @@
     gap: 10px;
   }
 
-  .section-label span { color: var(--accent); }
+  .section-label span { color: var(--black); }
 
   .field { margin-bottom: 22px; }
 
