@@ -61,26 +61,21 @@
     const { data: role } = await supabase.from('user_roles').select('role, client_id').single();
     if (role?.role === 'coach') { goto('/dashboard'); return; }
 
-    const [{ data: clientData }, { data: checkinData }, { data: intakeData }] = await Promise.all([
+    const [{ data: clientData }, { data: checkinData }] = await Promise.all([
       supabase.from('clients')
-        .select('first_name, last_name, weight_unit')
+        .select('first_name, last_name, weight_unit, favorite_color')
         .eq('id', role.client_id)
         .single(),
       supabase.from('checkins')
         .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, upcoming_disruptions, disruption_notes')
         .eq('client_id', role.client_id)
         .order('week_ending', { ascending: false }),
-      supabase.from('intakes')
-        .select('favorite_color')
-        .eq('client_id', role.client_id)
-        .limit(1)
-        .single(),
     ]);
 
     client      = clientData;
     weightUnit  = clientData?.weight_unit ?? 'kg';
     checkins    = checkinData ?? [];
-    clientColor = intakeData?.favorite_color ?? null;
+    clientColor = clientData?.favorite_color ?? null;
     // Most recent expanded by default
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
 
