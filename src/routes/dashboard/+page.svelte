@@ -45,6 +45,10 @@
   <Header />
 
   <main>
+    <div class="toolbar">
+      <a href="/my/checkin?preview=true" class="btn-preview">Preview Check-in Form</a>
+    </div>
+
     {#if loading}
       <p class="loading">Loading…</p>
     {:else}
@@ -86,7 +90,6 @@
       <section>
         <div class="section-header">
           <p class="section-label">Clients <span class="count">{clients.length}</span></p>
-          <a href="/my/checkin?preview=true" class="btn-preview">Preview Check-in Form</a>
         </div>
 
         {#if clients.length === 0}
@@ -136,6 +139,12 @@
   }
 
   .loading { color: var(--mid-grey); }
+
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 8px;
+  }
 
   section { display: flex; flex-direction: column; gap: 16px; }
 
