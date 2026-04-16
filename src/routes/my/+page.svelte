@@ -15,7 +15,7 @@
 
   let ratingCanvas, missedCanvas, nutritionCanvas, sleepCanvas, radarCanvas;
   let charts = [];
-  let chartsOpen = true;
+  let chartsOpen = false;
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
   const RATING_COLORS   = { 1: '#E87878', 2: '#E8BF60', 3: '#72C872', 4: '#5CC4B8', 5: '#6888E8' };
