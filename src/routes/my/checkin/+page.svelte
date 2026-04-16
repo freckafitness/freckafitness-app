@@ -9,6 +9,7 @@
   let loading = false;
   let error = '';
   let alreadySubmitted = false;
+  let isPreview = false;
 
   // Form fields
   let missedSessions = 0;
@@ -57,7 +58,8 @@
     if (!session) { goto('/login'); return; }
 
     const { data: role } = await supabase.from('user_roles').select('role, client_id').single();
-    if (role?.role === 'coach') { goto('/dashboard'); return; }
+    isPreview = role?.role === 'coach' && $page.url.searchParams.get('preview') === 'true';
+    if (role?.role === 'coach' && !isPreview) { goto('/dashboard'); return; }
     clientId = role?.client_id;
 
     // Calculate week ending first (needed for duplicate check)
@@ -67,14 +69,15 @@
     sunday.setDate(today.getDate() + daysUntilSunday);
     weekEnding = sunday.toISOString().split('T')[0];
 
-    const [{ data: clientRow }, { data: existing }] = await Promise.all([
-      supabase.from('clients').select('show_bodyweight, weight_unit').eq('id', role.client_id).single(),
-      supabase.from('checkins').select('id').eq('client_id', clientId).eq('week_ending', weekEnding).limit(1),
-    ]);
-
-    showBodyweight   = clientRow?.show_bodyweight ?? false;
-    weightUnit       = clientRow?.weight_unit ?? 'kg';
-    alreadySubmitted = (existing?.length ?? 0) > 0;
+    if (!isPreview) {
+      const [{ data: clientRow }, { data: existing }] = await Promise.all([
+        supabase.from('clients').select('show_bodyweight, weight_unit').eq('id', role.client_id).single(),
+        supabase.from('checkins').select('id').eq('client_id', clientId).eq('week_ending', weekEnding).limit(1),
+      ]);
+      showBodyweight   = clientRow?.show_bodyweight ?? false;
+      weightUnit       = clientRow?.weight_unit ?? 'kg';
+      alreadySubmitted = (existing?.length ?? 0) > 0;
+    }
   });
 
   async function switchUnit(u) {
@@ -143,6 +146,13 @@
   </div>
 
   <div class="form-wrap">
+
+    {#if isPreview}
+      <div class="preview-banner">
+        <strong>Preview Mode</strong> — This is how the check-in form appears to clients. Submission is disabled.
+        <a href="/dashboard" class="preview-back">← Back to Dashboard</a>
+      </div>
+    {/if}
 
     {#if alreadySubmitted}
       <div class="already-submitted">
@@ -338,10 +348,10 @@
       {/if}
 
       <div class="submit-wrap">
-        <button type="submit" disabled={loading}>
+        <button type="submit" disabled={loading || isPreview}>
           {loading ? 'Submitting…' : 'Submit Check-In'}
         </button>
-        <p class="submit-note">Sent directly to me. I review check-ins every Monday.</p>
+        <p class="submit-note">{isPreview ? 'Submission disabled in preview mode.' : 'Sent directly to me. I review check-ins every Monday.'}</p>
       </div>
 
     </form>
@@ -388,6 +398,38 @@
     margin: 0 auto;
     padding: 48px 24px 80px;
   }
+
+  .preview-banner {
+    background: #fff8ec;
+    border: 1.5px solid rgba(200,169,110,0.5);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--black);
+    line-height: 1.5;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .preview-back {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--black);
+    text-decoration: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 6px 14px;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+  }
+
+  .preview-back:hover { border-color: var(--black); }
 
   .form-section { margin-bottom: 48px; }
 

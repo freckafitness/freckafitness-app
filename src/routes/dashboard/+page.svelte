@@ -86,6 +86,7 @@
       <section>
         <div class="section-header">
           <p class="section-label">Clients <span class="count">{clients.length}</span></p>
+          <a href="/my/checkin?preview=true" class="btn-preview">Preview Check-in Form</a>
         </div>
 
         {#if clients.length === 0}
@@ -156,6 +157,21 @@
     align-items: center;
     gap: 8px;
   }
+
+  .btn-preview {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    text-decoration: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 5px 12px;
+    transition: all 0.15s;
+  }
+
+  .btn-preview:hover { color: var(--black); border-color: var(--black); }
 
   .count {
     background: var(--black);
