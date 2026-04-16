@@ -13,7 +13,7 @@
   let checkinDone = false;
   let expanded    = {};
 
-  let ratingCanvas, missedCanvas, nutritionCanvas, sleepCanvas;
+  let ratingCanvas, missedCanvas, nutritionCanvas, sleepCanvas, radarCanvas;
   let charts = [];
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
@@ -46,7 +46,7 @@
 
     checkinDone = $page.url.searchParams.get('checkin') === 'done';
 
-    if (checkins.length > 1) {
+    if (checkins.length >= 1) {
       await new Promise(r => setTimeout(r, 0));
       initCharts([...checkins].reverse());
     }
@@ -103,6 +103,62 @@
     makeChart(missedCanvas,    'Missed Sessions',     sorted.map(c => c.missed_sessions ?? 0), '#5CC4B8', 0, 4,  { 0:'0', 1:'1', 2:'2', 3:'3', 4:'>3' });
     makeChart(nutritionCanvas, 'Nutrition Adherence', sorted.map(c => c.nutrition_adherence),  '#c8a96e', 1, 10, null);
     makeChart(sleepCanvas,     'Sleep (hrs)',         sorted.map(c => c.sleep_hours),          '#72C872', 1, 10, null);
+
+    // Habit web — 4-week rolling average, all axes normalized 0–10
+    if (radarCanvas && sorted.length >= 1) {
+      const recent = sorted.slice(-4);
+      const avg = key => recent.reduce((s, c) => s + (c[key] ?? 0), 0) / recent.length;
+
+      const radarData = [
+        parseFloat(((avg('week_rating') / 5) * 10).toFixed(1)),          // 1–5 → 0–10
+        parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),   // 0–4 missed → 10–0 inverted
+        parseFloat(avg('nutrition_adherence').toFixed(1)),                 // 1–10 direct
+        parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),// 8 hrs = 10
+        parseFloat(((4 - avg('soreness')) / 3 * 10).toFixed(1)),          // 1–4 soreness → 10–0 inverted
+      ];
+
+      const radarChart = new Chart(radarCanvas.getContext('2d'), {
+        type: 'radar',
+        data: {
+          labels: ['Week\nRating', 'Consistency', 'Nutrition', 'Sleep', 'Recovery'],
+          datasets: [{
+            label: '4-Week Average',
+            data: radarData,
+            borderColor: '#6888E8',
+            backgroundColor: 'rgba(104,136,232,0.15)',
+            pointBackgroundColor: '#6888E8',
+            pointRadius: 4,
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.raw} / 10`
+              }
+            }
+          },
+          scales: {
+            r: {
+              min: 0,
+              max: 10,
+              ticks: { stepSize: 2, display: false },
+              grid: { color: 'rgba(0,0,0,0.07)' },
+              angleLines: { color: 'rgba(0,0,0,0.07)' },
+              pointLabels: {
+                font: { size: 11, weight: '700', family: "'Halyard Display', sans-serif" },
+                color: '#6a7080',
+              }
+            }
+          }
+        }
+      });
+      charts.push(radarChart);
+    }
   }
 
   function fmtDate(d) {
@@ -131,6 +187,17 @@
     <div class="actions">
       <a href="/my/checkin" class="btn-primary">Submit Weekly Check-In</a>
     </div>
+
+    <!-- Habit web -->
+    {#if checkins.length >= 1}
+      <section class="habit-web-section">
+        <h2>Your Habit Web</h2>
+        <p class="web-subtitle">4-week rolling average across key habits — the fuller the web, the more well-rounded your consistency.</p>
+        <div class="radar-wrap">
+          <canvas bind:this={radarCanvas}></canvas>
+        </div>
+      </section>
+    {/if}
 
     <!-- Trend charts -->
     {#if checkins.length > 1}
@@ -339,6 +406,26 @@
   }
 
   .btn-primary:hover { background: #1f2f45; }
+
+  /* Habit web */
+  .habit-web-section { margin-bottom: 40px; }
+
+  .web-subtitle {
+    font-size: 13px;
+    color: var(--mid-grey);
+    margin-top: -14px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .radar-wrap {
+    background: white;
+    border: 1px solid var(--light-grey);
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 380px;
+    margin: 0 auto;
+  }
 
   /* Trends */
   .trends { margin-bottom: 40px; }
