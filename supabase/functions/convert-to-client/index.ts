@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders })
     }
 
-    const { intake_id } = await req.json()
+    const { intake_id, weight_unit, show_bodyweight, welcome_note } = await req.json()
     if (!intake_id) {
       return new Response(JSON.stringify({ error: 'intake_id required' }), { status: 400, headers: corsHeaders })
     }
@@ -86,6 +86,9 @@ Deno.serve(async (req) => {
         favorite_color:     intake.favorite_color,
         birthday:           intake.birthday,
         gender:             intake.gender,
+        weight_unit:        weight_unit ?? 'lbs',
+        show_bodyweight:    show_bodyweight ?? false,
+        welcome_note:       welcome_note ?? null,
         previous_client_id: previousClientId,
       })
       .select('id')
