@@ -54,13 +54,13 @@
   <div class="card">
     <div class="brand">
       <img src="/Logo/frecka-01.svg" alt="Frecka Fitness" class="logo" />
-      <p class="eyebrow">Create Password</p>
+      <p class="eyebrow">Set Password</p>
     </div>
 
     {#if loading}
       <p class="status">Setting up your account…</p>
     {:else}
-      <p class="intro">Choose a password to access your client portal.</p>
+      <p class="intro">Choose a password for your Frecka Fitness account.</p>
 
       <form on:submit={handleSubmit}>
         <div class="field">
