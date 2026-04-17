@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // Fetch intake
     const { data: intake, error: intakeError } = await supabaseAdmin
       .from('intakes')
-      .select('id, first_name, last_name, email, phone, favorite_color, client_id')
+      .select('id, first_name, last_name, email, phone, favorite_color, birthday, gender, client_id')
       .eq('id', intake_id)
       .single()
 
@@ -84,6 +84,8 @@ Deno.serve(async (req) => {
         phone:              intake.phone,
         status:             'active',
         favorite_color:     intake.favorite_color,
+        birthday:           intake.birthday,
+        gender:             intake.gender,
         previous_client_id: previousClientId,
       })
       .select('id')
