@@ -102,10 +102,11 @@ Deno.serve(async (req) => {
     // Send invite email — non-fatal if it fails (client record already created)
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       intake.email,
-      { redirectTo: 'https://app.freckafitness.com/login' }
+      { redirectTo: 'https://app.freckafitness.com/set-password' }
     )
 
     if (inviteError || !inviteData?.user) {
+      console.error('inviteUserByEmail failed:', JSON.stringify(inviteError))
       return new Response(JSON.stringify({
         client_id:    client.id,
         invite_sent:  false,
