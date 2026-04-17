@@ -4,6 +4,11 @@
   import { supabase } from '$lib/supabase.js';
 
   onMount(async () => {
+    if (window.location.hash.includes('type=recovery')) {
+      goto('/set-password');
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { goto('/login'); return; }
 
