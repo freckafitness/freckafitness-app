@@ -186,7 +186,7 @@
               </p>
             </div>
             <div class="item">
-              <p class="item-label">Gender</p>
+              <p class="item-label">Pronouns</p>
               <p class="item-value">{val(intake.gender)}</p>
             </div>
             <div class="item">
