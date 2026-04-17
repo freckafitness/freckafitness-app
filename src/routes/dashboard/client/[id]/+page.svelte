@@ -350,13 +350,14 @@
         <div class="section-header">
           <h2>Trends</h2>
         </div>
-        <div class="charts-grid">
-          <div class="chart-wrap chart-wrap--radar">
-            <p class="chart-label">Habit Web <span class="chart-label-sub">4-week avg</span></p>
-            <div class="radar-inner">
-              <canvas bind:this={radarCanvas}></canvas>
-            </div>
+        <div class="habit-web-block">
+          <p class="web-subtitle">4-week rolling average</p>
+          <div class="radar-wrap">
+            <canvas bind:this={radarCanvas}></canvas>
           </div>
+        </div>
+
+        <div class="charts-grid">
           <div class="chart-wrap">
             <p class="chart-label">Week Rating</p>
             <canvas bind:this={ratingCanvas}></canvas>
@@ -771,25 +772,33 @@
     margin-bottom: 12px;
   }
 
-  .chart-label-sub {
-    font-weight: 400;
-    letter-spacing: 0.05em;
-    text-transform: none;
-  }
-
   .chart-wrap canvas {
     height: 160px !important;
   }
 
-  .chart-wrap--radar {
+  .habit-web-block {
     display: flex;
     flex-direction: column;
     align-items: center;
+    margin-bottom: 8px;
   }
 
-  .radar-inner {
+  .web-subtitle {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    margin-bottom: 12px;
+  }
+
+  .radar-wrap {
+    background: white;
+    border: 1px solid var(--light-grey);
+    border-radius: 8px;
+    padding: 24px;
     width: 100%;
-    max-width: 200px;
+    max-width: 380px;
   }
 
   /* Check-in cards */
