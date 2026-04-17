@@ -20,8 +20,107 @@
   let archiveError   = '';
 
   // Chart canvas refs
-  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas, radarCanvas;
+  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
   let charts = [];
+  let comparisonChart = null;
+  let chartsReady     = false;
+
+  // Comparison period state
+  let comparisonPeriod = '12W';
+  let customFrom       = '';
+  let customTo         = '';
+  let comparisonCount  = 0;
+  let minDate          = '';
+  let maxDate          = '';
+
+  const PERIODS = [
+    { label: '8W',       value: '8W'     },
+    { label: '12W',      value: '12W'    },
+    { label: '6M',       value: '6M'     },
+    { label: 'YTD',      value: 'YTD'    },
+    { label: 'All Time', value: 'ALL'    },
+    { label: 'Custom',   value: 'custom' },
+  ];
+
+  function radarDataFrom(subset) {
+    if (!subset.length) return [0, 0, 0, 0, 0];
+    const avg = key => subset.reduce((s, c) => s + (c[key] ?? 0), 0) / subset.length;
+    return [
+      parseFloat(((avg('week_rating') / 5) * 10).toFixed(1)),
+      parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),
+      parseFloat(avg('nutrition_adherence').toFixed(1)),
+      parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),
+      parseFloat(((4 - avg('soreness')) / 3 * 10).toFixed(1)),
+    ];
+  }
+
+  function getCheckinsByPeriod(period, from, to) {
+    const sorted = [...checkins].sort((a, b) => a.week_ending.localeCompare(b.week_ending));
+    if (period === 'ALL') return sorted;
+    if (period === 'custom') {
+      if (!from || !to) return [];
+      return sorted.filter(c => c.week_ending >= from && c.week_ending <= to);
+    }
+    const now = new Date();
+    let cutoff;
+    switch (period) {
+      case '8W':  cutoff = new Date(now - 8  * 7 * 864e5); break;
+      case '12W': cutoff = new Date(now - 12 * 7 * 864e5); break;
+      case '6M':  cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 6); break;
+      case 'YTD': cutoff = new Date(now.getFullYear(), 0, 1); break;
+      default:    return sorted;
+    }
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    return sorted.filter(c => c.week_ending >= cutoffStr);
+  }
+
+  function radarChartOptions() {
+    return {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.raw} / 10` } }
+      },
+      scales: {
+        r: {
+          min: 0, max: 10,
+          ticks: { stepSize: 2, display: false },
+          grid: { color: 'rgba(0,0,0,0.07)' },
+          angleLines: { color: 'rgba(0,0,0,0.07)' },
+          pointLabels: {
+            font: { size: 11, weight: '700', family: "'Halyard Display', sans-serif" },
+            color: '#6a7080',
+          }
+        }
+      }
+    };
+  }
+
+  function drawComparisonRadar() {
+    if (comparisonChart) { comparisonChart.destroy(); comparisonChart = null; }
+    if (!comparisonCanvas) return;
+    const subset = getCheckinsByPeriod(comparisonPeriod, customFrom, customTo);
+    comparisonCount = subset.length;
+    if (!subset.length) return;
+    const fillHex   = client?.favorite_color || '#6888E8';
+    const borderHex = contrastColor(fillHex);
+    comparisonChart = new Chart(comparisonCanvas.getContext('2d'), {
+      type: 'radar',
+      data: {
+        labels: ['Week\nRating', 'Consistency', 'Nutrition', 'Sleep', 'Recovery'],
+        datasets: [{ label: 'Period Average', data: radarDataFrom(subset),
+          borderColor: borderHex, backgroundColor: fillHex + '28',
+          pointBackgroundColor: borderHex, pointRadius: 4, borderWidth: 2 }]
+      },
+      options: radarChartOptions()
+    });
+  }
+
+  $: if (chartsReady) {
+    comparisonPeriod; customFrom; customTo;
+    drawComparisonRadar();
+  }
 
   function contrastColor(hex) {
     if (!hex) return '#6888E8';
@@ -75,6 +174,12 @@
     checkins = ch ?? [];
     intake   = i;
 
+    if (checkins.length) {
+      const sorted = [...checkins].sort((a, b) => a.week_ending.localeCompare(b.week_ending));
+      minDate = sorted[0].week_ending;
+      maxDate = sorted[sorted.length - 1].week_ending;
+    }
+
     checkins.forEach(c => {
       notesState[c.id] = { text: c.coach_notes ?? '', saving: false, saved: false };
     });
@@ -88,6 +193,7 @@
     if (checkins.length > 1) {
       await new Promise(r => setTimeout(r, 0));
       initCharts([...checkins].reverse());
+      chartsReady = true;
     }
   });
 
@@ -161,51 +267,17 @@
 
     // Habit web — 4-week rolling average
     if (radarCanvas && sorted.length >= 1) {
-      const recent = sorted.slice(-4);
-      const avg = key => recent.reduce((s, c) => s + (c[key] ?? 0), 0) / recent.length;
-      const radarData = [
-        parseFloat(((avg('week_rating') / 5) * 10).toFixed(1)),
-        parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),
-        parseFloat(avg('nutrition_adherence').toFixed(1)),
-        parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),
-        parseFloat(((4 - avg('soreness')) / 3 * 10).toFixed(1)),
-      ];
       const fillHex   = client?.favorite_color || '#6888E8';
       const borderHex = contrastColor(fillHex);
       const radarChart = new Chart(radarCanvas.getContext('2d'), {
         type: 'radar',
         data: {
           labels: ['Week\nRating', 'Consistency', 'Nutrition', 'Sleep', 'Recovery'],
-          datasets: [{
-            label: '4-Week Average',
-            data: radarData,
-            borderColor: borderHex,
-            backgroundColor: fillHex + '28',
-            pointBackgroundColor: borderHex,
-            pointRadius: 4,
-            borderWidth: 2,
-          }]
+          datasets: [{ label: '4-Week Average', data: radarDataFrom(sorted.slice(-4)),
+            borderColor: borderHex, backgroundColor: fillHex + '28',
+            pointBackgroundColor: borderHex, pointRadius: 4, borderWidth: 2 }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: ctx => `${ctx.raw} / 10` } }
-          },
-          scales: {
-            r: {
-              min: 0, max: 10,
-              ticks: { stepSize: 2, display: false },
-              grid: { color: 'rgba(0,0,0,0.07)' },
-              angleLines: { color: 'rgba(0,0,0,0.07)' },
-              pointLabels: {
-                font: { size: 11, weight: '700', family: "'Halyard Display', sans-serif" },
-                color: '#6a7080',
-              }
-            }
-          }
-        }
+        options: radarChartOptions()
       });
       charts.push(radarChart);
     }
@@ -350,11 +422,43 @@
         <div class="section-header">
           <h2>Trends</h2>
         </div>
-        <div class="habit-web-block">
-          <p class="web-subtitle">4-week rolling average</p>
-          <div class="radar-wrap">
+        <div class="radars-row">
+
+          <!-- Left: fixed 4-week -->
+          <div class="radar-card">
+            <p class="radar-card-label">Last 4 Weeks</p>
             <canvas bind:this={radarCanvas}></canvas>
           </div>
+
+          <!-- Right: configurable comparison period -->
+          <div class="radar-card">
+            <div class="radar-card-header">
+              <p class="radar-card-label">Compare Period</p>
+              {#if comparisonCount > 0}
+                <span class="checkin-count">{comparisonCount} check-in{comparisonCount === 1 ? '' : 's'}</span>
+              {:else}
+                <span class="checkin-count no-data">No data in range</span>
+              {/if}
+            </div>
+            <div class="period-chips">
+              {#each PERIODS as p}
+                <button type="button" class="period-chip"
+                  class:active={comparisonPeriod === p.value}
+                  on:click={() => comparisonPeriod = p.value}>
+                  {p.label}
+                </button>
+              {/each}
+            </div>
+            {#if comparisonPeriod === 'custom'}
+              <div class="date-range">
+                <input type="date" bind:value={customFrom} min={minDate} max={maxDate} />
+                <span>→</span>
+                <input type="date" bind:value={customTo}   min={minDate} max={maxDate} />
+              </div>
+            {/if}
+            <canvas bind:this={comparisonCanvas}></canvas>
+          </div>
+
         </div>
 
         <div class="charts-grid">
@@ -776,14 +880,33 @@
     height: 160px !important;
   }
 
-  .habit-web-block {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 8px;
+  /* Habit web comparison */
+  .radars-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
   }
 
-  .web-subtitle {
+  @media (max-width: 700px) {
+    .radars-row { grid-template-columns: 1fr; }
+  }
+
+  .radar-card {
+    background: white;
+    border: 1px solid var(--light-grey);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+
+  .radar-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .radar-card-label {
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -792,14 +915,64 @@
     margin-bottom: 12px;
   }
 
-  .radar-wrap {
-    background: white;
-    border: 1px solid var(--light-grey);
-    border-radius: 8px;
-    padding: 24px;
-    width: 100%;
-    max-width: 380px;
+  .radar-card-header .radar-card-label { margin-bottom: 0; }
+
+  .checkin-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mid-grey);
   }
+
+  .checkin-count.no-data { color: #E87878; }
+
+  .period-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+
+  .period-chip {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 4px;
+    color: var(--mid-grey);
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .period-chip:hover { border-color: var(--black); color: var(--black); }
+  .period-chip.active { background: var(--black); border-color: var(--black); color: var(--off-white); }
+
+  .date-range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .date-range span { font-size: 12px; color: var(--mid-grey); }
+
+  .date-range input[type="date"] {
+    flex: 1;
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    padding: 5px 8px;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 4px;
+    background: var(--warm-white);
+    color: var(--black);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .date-range input[type="date"]:focus { border-color: var(--accent); }
 
   /* Check-in cards */
   .checkin-list {
