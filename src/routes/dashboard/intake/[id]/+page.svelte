@@ -45,38 +45,37 @@
     convertError = '';
     converting = true;
 
-    const { data: existing } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('email', intake.email)
-      .maybeSingle();
+    const { data: { session } } = await supabase.auth.getSession();
 
-    if (existing) {
-      convertError = 'A client with this email already exists.';
+    const res = await fetch(
+      'https://uftthvphkmccerergxup.supabase.co/functions/v1/convert-to-client',
+      {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey':        'sb_publishable_TkYdMrUsU_XEevuHix1nmg_F2oYVPl7',
+        },
+        body: JSON.stringify({ intake_id: intake.id }),
+      }
+    );
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      convertError = result.error ?? 'Something went wrong. Please try again.';
       converting = false;
       return;
     }
 
-    const { data: client, error } = await supabase
-      .from('clients')
-      .insert({
-        first_name: intake.first_name,
-        last_name:  intake.last_name,
-        email:      intake.email,
-        phone:      intake.phone,
-        status:     'active',
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      convertError = 'Something went wrong. Please try again.';
+    if (!result.invite_sent) {
+      convertError = `Client created but invite failed: ${result.invite_error}. Send the invite manually from Supabase.`;
       converting = false;
+      alreadyClient = true;
       return;
     }
 
-    await supabase.from('intakes').update({ client_id: client.id }).eq('id', intake.id);
-    goto(`/dashboard/client/${client.id}`);
+    goto(`/dashboard/client/${result.client_id}`);
   }
 
   function val(v) { return v || '—'; }
@@ -450,8 +449,6 @@
   }
 
   /* Coach Notes */
-  .notes-section {}
-
   .notes-hint {
     font-size: 13px;
     color: var(--mid-grey);

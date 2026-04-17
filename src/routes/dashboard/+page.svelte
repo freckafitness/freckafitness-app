@@ -5,8 +5,10 @@
   import Header from '$lib/Header.svelte';
 
   let clients = [];
+  let archivedClients = [];
   let prospects = [];
   let loading = true;
+  let archivedOpen = false;
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -21,10 +23,16 @@
   async function loadData() {
     loading = true;
 
-    const [{ data: clientData }, { data: prospectData }] = await Promise.all([
+    const [{ data: clientData }, { data: archivedData }, { data: prospectData }] = await Promise.all([
       supabase
         .from('clients')
-        .select('id, first_name, last_name, email, status, created_at')
+        .select('id, first_name, last_name, email, status, created_at, intakes(id)')
+        .eq('status', 'active')
+        .order('last_name'),
+      supabase
+        .from('clients')
+        .select('id, first_name, last_name, email, status, created_at, intakes(id)')
+        .eq('status', 'inactive')
         .order('last_name'),
       supabase
         .from('intakes')
@@ -34,6 +42,7 @@
     ]);
 
     clients = clientData ?? [];
+    archivedClients = archivedData ?? [];
     prospects = prospectData ?? [];
     loading = false;
   }
@@ -93,7 +102,7 @@
         </div>
 
         {#if clients.length === 0}
-          <p class="empty">No clients yet. Convert a prospect or add a client manually.</p>
+          <p class="empty">No clients yet. Convert a prospect to get started.</p>
         {:else}
           <div class="table-wrap">
             <table>
@@ -101,7 +110,6 @@
                 <tr>
                   <th>Name</th>
                   <th>Email</th>
-                  <th>Status</th>
                   <th>Since</th>
                   <th></th>
                 </tr>
@@ -111,9 +119,14 @@
                   <tr class="clickable" on:click={() => goto(`/dashboard/client/${c.id}`)}>
                     <td class="name">{c.first_name} {c.last_name}</td>
                     <td class="muted">{c.email}</td>
-                    <td><span class="badge {c.status}">{c.status}</span></td>
                     <td class="muted">{new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                    <td class="action-cell">→</td>
+                    <td class="action-cell">
+                      {#if c.intakes?.[0]}
+                        <a href="/dashboard/intake/{c.intakes[0].id}" class="btn-outline" on:click|stopPropagation>View Intake</a>
+                      {:else}
+                        →
+                      {/if}
+                    </td>
                   </tr>
                 {/each}
               </tbody>
@@ -121,6 +134,47 @@
           </div>
         {/if}
       </section>
+
+      <!-- Archived Clients -->
+      {#if archivedClients.length > 0}
+        <section>
+          <button type="button" class="section-header archived-toggle" on:click={() => archivedOpen = !archivedOpen}>
+            <p class="section-label">Archived <span class="count count--muted">{archivedClients.length}</span></p>
+            <span class="chevron" class:open={archivedOpen}>›</span>
+          </button>
+
+          {#if archivedOpen}
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Since</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each archivedClients as c}
+                    <tr class="clickable archived-row" on:click={() => goto(`/dashboard/client/${c.id}`)}>
+                      <td class="name muted">{c.first_name} {c.last_name}</td>
+                      <td class="muted">{c.email}</td>
+                      <td class="muted">{new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                      <td class="action-cell">
+                        {#if c.intakes?.[0]}
+                          <a href="/dashboard/intake/{c.intakes[0].id}" class="btn-outline" on:click|stopPropagation>View Intake</a>
+                        {:else}
+                          →
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </section>
+      {/if}
 
     {/if}
   </main>
@@ -237,24 +291,7 @@
     background: var(--warm-white);
   }
 
-  .badge {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 3px 10px;
-    border-radius: 20px;
-  }
 
-  .badge.active {
-    background: #d4edda;
-    color: var(--success);
-  }
-
-  .badge.inactive {
-    background: var(--warm-white);
-    color: var(--mid-grey);
-  }
 
   .btn-outline {
     font-family: 'Halyard Display', sans-serif;
@@ -278,4 +315,35 @@
     font-size: 14px;
     padding: 24px 0;
   }
+
+  .archived-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--light-grey);
+    padding-bottom: 10px;
+    cursor: pointer;
+    font-family: 'Halyard Display', sans-serif;
+    text-align: left;
+  }
+
+  .count--muted {
+    background: var(--light-grey);
+    color: var(--mid-grey);
+  }
+
+  .chevron {
+    font-size: 20px;
+    color: var(--mid-grey);
+    transition: transform 0.2s;
+    display: inline-block;
+    line-height: 1;
+  }
+  .chevron.open { transform: rotate(90deg); }
+
+  .archived-row td { opacity: 0.6; }
+  .archived-row:hover td { opacity: 1; }
 </style>

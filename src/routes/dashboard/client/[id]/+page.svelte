@@ -12,9 +12,12 @@
   let intake   = null;
   let loading  = true;
 
-  let notesState   = {};
-  let expanded     = {};
-  let displayUnit  = 'kg';
+  let notesState     = {};
+  let expanded       = {};
+  let displayUnit    = 'kg';
+  let archiveConfirm = false;
+  let archiving      = false;
+  let archiveError   = '';
 
   // Chart canvas refs
   let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas;
@@ -183,6 +186,37 @@
   function fmtSince(d) {
     return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
+
+  async function archiveClient() {
+    archiveError = '';
+    archiving = true;
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const res = await fetch(
+      'https://uftthvphkmccerergxup.supabase.co/functions/v1/archive-client',
+      {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey':        'sb_publishable_TkYdMrUsU_XEevuHix1nmg_F2oYVPl7',
+        },
+        body: JSON.stringify({ client_id: client.id }),
+      }
+    );
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      archiveError = result.error ?? 'Something went wrong.';
+      archiving = false;
+      archiveConfirm = false;
+      return;
+    }
+
+    goto('/dashboard');
+  }
 </script>
 
 <svelte:head>
@@ -200,18 +234,34 @@
       <div class="top-bar">
         <a href="/dashboard" class="back">← Back to roster</a>
         <div class="top-bar-actions">
-          <button class="bw-toggle" class:on={client.show_bodyweight} on:click={toggleBodyweight}>
-            <span class="bw-toggle-track" class:on={client.show_bodyweight}><span class="bw-toggle-thumb"></span></span>
-            Track body weight
-          </button>
+          {#if client.status === 'active'}
+            <button class="bw-toggle" class:on={client.show_bodyweight} on:click={toggleBodyweight}>
+              <span class="bw-toggle-track" class:on={client.show_bodyweight}><span class="bw-toggle-thumb"></span></span>
+              Track body weight
+            </button>
+          {/if}
           {#if intake}
             <a href="/dashboard/intake/{intake.id}" class="btn-outline">View Intake</a>
           {/if}
+          {#if client.status === 'active'}
+            {#if archiveConfirm}
+              <div class="archive-confirm">
+                <span class="archive-confirm-label">Archive this client?</span>
+                <button class="btn-archive-confirm" on:click={archiveClient} disabled={archiving}>
+                  {archiving ? 'Archiving…' : 'Yes, archive'}
+                </button>
+                <button class="btn-cancel" on:click={() => archiveConfirm = false} disabled={archiving}>Cancel</button>
+              </div>
+            {:else}
+              <button class="btn-archive" on:click={() => archiveConfirm = true}>Archive</button>
+            {/if}
+          {/if}
         </div>
       </div>
+      {#if archiveError}<p class="archive-error">{archiveError}</p>{/if}
 
       <div class="hero-block">
-        <p class="eyebrow">Client</p>
+        <p class="eyebrow">{client.status === 'inactive' ? 'Archived Client' : 'Client'}</p>
         <h1>{client.first_name} {client.last_name}</h1>
         <p class="meta">
           {client.email}
@@ -220,6 +270,9 @@
         <div class="hero-meta-row">
           <span class="badge {client.status}">{client.status}</span>
           <span class="since">Member since {fmtSince(client.created_at)}</span>
+          {#if client.previous_client_id}
+            <a href="/dashboard/client/{client.previous_client_id}" class="prev-stint-link">← Previous stint</a>
+          {/if}
         </div>
       </div>
 
@@ -871,4 +924,84 @@
   }
   .btn-save:hover:not(:disabled) { border-color: var(--black); }
   .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Archive */
+  .btn-archive {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 6px 14px;
+    background: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-archive:hover { color: var(--error); border-color: var(--error); }
+
+  .archive-confirm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .archive-confirm-label {
+    font-size: 13px;
+    color: var(--mid-grey);
+    white-space: nowrap;
+  }
+
+  .btn-archive-confirm {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--off-white);
+    background: var(--error);
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-archive-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-cancel {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .btn-cancel:hover { border-color: var(--black); color: var(--black); }
+  .btn-cancel:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .archive-error {
+    font-size: 13px;
+    color: var(--error);
+    text-align: right;
+    margin-top: -24px;
+  }
+
+  .prev-stint-link {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--mid-grey);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--light-grey);
+    transition: color 0.15s;
+  }
+  .prev-stint-link:hover { color: var(--black); }
 </style>
