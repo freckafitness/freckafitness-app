@@ -491,9 +491,9 @@
     background: white;
     border: 1px solid var(--light-grey);
     border-radius: 8px;
-    padding: 24px;
+    padding: 16px;
     width: 100%;
-    max-width: 380px;
+    max-width: 220px;
   }
 
   .charts-grid {

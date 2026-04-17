@@ -20,8 +20,38 @@
   let archiveError   = '';
 
   // Chart canvas refs
-  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas;
+  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas, radarCanvas;
   let charts = [];
+
+  function contrastColor(hex) {
+    if (!hex) return '#6888E8';
+    const r = parseInt(hex.slice(1,3), 16) / 255;
+    const g = parseInt(hex.slice(3,5), 16) / 255;
+    const b = parseInt(hex.slice(5,7), 16) / 255;
+    const lin = c => c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+    const L = 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
+    if (L <= 0.5) return hex;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+    let h = 0, s = 0;
+    if (d > 0) {
+      s = d / (max+min < 1 ? max+min : 2-max-min);
+      if      (max === r) h = ((g-b)/d + (g<b?6:0)) / 6;
+      else if (max === g) h = ((b-r)/d + 2) / 6;
+      else                h = ((r-g)/d + 4) / 6;
+    }
+    const l2 = 0.45;
+    const q = l2 < 0.5 ? l2*(1+s) : l2+s-l2*s;
+    const p = 2*l2 - q;
+    const hue2rgb = (p,q,t) => {
+      t = t<0?t+1:t>1?t-1:t;
+      if (t<1/6) return p+(q-p)*6*t;
+      if (t<1/2) return q;
+      if (t<2/3) return p+(q-p)*(2/3-t)*6;
+      return p;
+    };
+    const h2 = x => Math.round(hue2rgb(p,q,x)*255).toString(16).padStart(2,'0');
+    return '#' + h2(h+1/3) + h2(h) + h2(h-1/3);
+  }
 
   const SORENESS_LABELS = { 1: 'Nothing to Flag', 2: 'Minor Soreness', 3: 'Persistent Soreness', 4: 'Pain — Needs Attention' };
   const RATING_COLORS   = { 1: '#E87878', 2: '#E8BF60', 3: '#72C872', 4: '#5CC4B8', 5: '#6888E8' };
@@ -128,6 +158,57 @@
     const bwData = sorted.map(c => c.bodyweight == null ? null
       : displayUnit === 'lbs' ? parseFloat((c.bodyweight * 2.2046).toFixed(1)) : c.bodyweight);
     makeChart(bodyweightCanvas, `Body Weight (${displayUnit})`, bwData, '#c8a96e', undefined, undefined, null);
+
+    // Habit web — 4-week rolling average
+    if (radarCanvas && sorted.length >= 1) {
+      const recent = sorted.slice(-4);
+      const avg = key => recent.reduce((s, c) => s + (c[key] ?? 0), 0) / recent.length;
+      const radarData = [
+        parseFloat(((avg('week_rating') / 5) * 10).toFixed(1)),
+        parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),
+        parseFloat(avg('nutrition_adherence').toFixed(1)),
+        parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),
+        parseFloat(((4 - avg('soreness')) / 3 * 10).toFixed(1)),
+      ];
+      const fillHex   = client?.favorite_color || '#6888E8';
+      const borderHex = contrastColor(fillHex);
+      const radarChart = new Chart(radarCanvas.getContext('2d'), {
+        type: 'radar',
+        data: {
+          labels: ['Week\nRating', 'Consistency', 'Nutrition', 'Sleep', 'Recovery'],
+          datasets: [{
+            label: '4-Week Average',
+            data: radarData,
+            borderColor: borderHex,
+            backgroundColor: fillHex + '28',
+            pointBackgroundColor: borderHex,
+            pointRadius: 4,
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => `${ctx.raw} / 10` } }
+          },
+          scales: {
+            r: {
+              min: 0, max: 10,
+              ticks: { stepSize: 2, display: false },
+              grid: { color: 'rgba(0,0,0,0.07)' },
+              angleLines: { color: 'rgba(0,0,0,0.07)' },
+              pointLabels: {
+                font: { size: 11, weight: '700', family: "'Halyard Display', sans-serif" },
+                color: '#6a7080',
+              }
+            }
+          }
+        }
+      });
+      charts.push(radarChart);
+    }
   }
 
   async function switchDisplayUnit(u) {
@@ -270,6 +351,12 @@
           <h2>Trends</h2>
         </div>
         <div class="charts-grid">
+          <div class="chart-wrap chart-wrap--radar">
+            <p class="chart-label">Habit Web <span class="chart-label-sub">4-week avg</span></p>
+            <div class="radar-inner">
+              <canvas bind:this={radarCanvas}></canvas>
+            </div>
+          </div>
           <div class="chart-wrap">
             <p class="chart-label">Week Rating</p>
             <canvas bind:this={ratingCanvas}></canvas>
@@ -684,8 +771,25 @@
     margin-bottom: 12px;
   }
 
+  .chart-label-sub {
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-transform: none;
+  }
+
   .chart-wrap canvas {
     height: 160px !important;
+  }
+
+  .chart-wrap--radar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .radar-inner {
+    width: 100%;
+    max-width: 200px;
   }
 
   /* Check-in cards */
