@@ -38,6 +38,16 @@
     loading = false;
   });
 
+  async function dismissIntake() {
+    await supabase.from('intakes').update({ dismissed_at: new Date().toISOString() }).eq('id', intake.id);
+    intake = { ...intake, dismissed_at: new Date().toISOString() };
+  }
+
+  async function undismissIntake() {
+    await supabase.from('intakes').update({ dismissed_at: null }).eq('id', intake.id);
+    intake = { ...intake, dismissed_at: null };
+  }
+
   async function saveNotes() {
     savingNotes = true;
     notesSaved = false;
@@ -117,9 +127,14 @@
         {#if !alreadyClient && !converted}
           <div class="convert-wrap">
             {#if convertError}<span class="convert-error">{convertError}</span>{/if}
-            <button class="btn-convert" on:click={() => modalOpen = true} disabled={converting}>
-              {converting ? 'Converting…' : 'Convert to Client'}
-            </button>
+            {#if intake.dismissed_at}
+              <button class="btn-undismiss" on:click={undismissIntake}>Restore Prospect</button>
+            {:else}
+              <button class="btn-dismiss" on:click={dismissIntake}>Dismiss</button>
+              <button class="btn-convert" on:click={() => modalOpen = true} disabled={converting}>
+                {converting ? 'Converting…' : 'Convert to Client'}
+              </button>
+            {/if}
           </div>
         {:else}
           <span class="badge converted">Client</span>
@@ -306,7 +321,7 @@
 </div>
 
 {#if modalOpen}
-  <div class="modal-overlay" on:click|self={() => modalOpen = false} role="dialog" aria-modal="true">
+  <div class="modal-overlay" on:click|self={() => modalOpen = false} on:keydown={e => e.key === 'Escape' && (modalOpen = false)} role="dialog" aria-modal="true" tabindex="-1">
     <div class="modal-card">
       <h3 class="modal-title">Convert to Client</h3>
       <p class="modal-sub">Set preferences before sending the invite.</p>
@@ -420,6 +435,38 @@
 
   .btn-convert:hover:not(:disabled) { background: #1f2f45; }
   .btn-convert:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-dismiss {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-dismiss:hover { color: var(--error); border-color: var(--error); }
+
+  .btn-undismiss {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-undismiss:hover { color: var(--black); border-color: var(--black); }
 
   .badge.converted {
     font-size: 11px;

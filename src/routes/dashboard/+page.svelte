@@ -7,8 +7,13 @@
   let clients = [];
   let archivedClients = [];
   let prospects = [];
+  let dismissedProspects = [];
   let loading = true;
   let archivedOpen = false;
+  let dismissedOpen = false;
+  let expandedNotes = {};
+  let noteTexts = {};
+  let noteStatus = {};
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -23,7 +28,7 @@
   async function loadData() {
     loading = true;
 
-    const [{ data: clientData }, { data: archivedData }, { data: prospectData }] = await Promise.all([
+    const [{ data: clientData }, { data: archivedData }, { data: prospectData }, { data: dismissedData }] = await Promise.all([
       supabase
         .from('clients')
         .select('id, first_name, last_name, email, status, created_at, intakes(id)')
@@ -36,15 +41,52 @@
         .order('last_name'),
       supabase
         .from('intakes')
+        .select('id, first_name, last_name, email, created_at, coach_notes')
+        .is('client_id', null)
+        .is('dismissed_at', null)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('intakes')
         .select('id, first_name, last_name, email, created_at')
         .is('client_id', null)
-        .order('created_at', { ascending: false })
+        .not('dismissed_at', 'is', null)
+        .order('dismissed_at', { ascending: false }),
     ]);
 
     clients = clientData ?? [];
     archivedClients = archivedData ?? [];
     prospects = prospectData ?? [];
+    dismissedProspects = dismissedData ?? [];
+
+    noteTexts = {};
+    noteStatus = {};
+    prospects.forEach(p => {
+      noteTexts[p.id] = p.coach_notes ?? '';
+      noteStatus[p.id] = 'idle';
+    });
+
     loading = false;
+  }
+
+  async function dismissProspect(id) {
+    await supabase.from('intakes').update({ dismissed_at: new Date().toISOString() }).eq('id', id);
+    await loadData();
+  }
+
+  async function undismissProspect(id) {
+    await supabase.from('intakes').update({ dismissed_at: null }).eq('id', id);
+    await loadData();
+  }
+
+  function toggleNote(id) {
+    expandedNotes = { ...expandedNotes, [id]: !expandedNotes[id] };
+  }
+
+  async function saveNote(id) {
+    noteStatus = { ...noteStatus, [id]: 'saving' };
+    await supabase.from('intakes').update({ coach_notes: noteTexts[id] }).eq('id', id);
+    noteStatus = { ...noteStatus, [id]: 'saved' };
+    setTimeout(() => { noteStatus = { ...noteStatus, [id]: 'idle' }; }, 2500);
   }
 </script>
 
@@ -85,9 +127,36 @@
                     <td class="muted">{p.email}</td>
                     <td class="muted">{new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                     <td class="action-cell">
-                      <a href="/dashboard/intake/{p.id}" class="btn-outline">View Intake</a>
+                      <div class="row-actions">
+                        <button class="btn-note-toggle" class:active={expandedNotes[p.id]} on:click={() => toggleNote(p.id)} title="Add note">✎</button>
+                        <a href="/dashboard/intake/{p.id}" class="btn-outline">View Intake</a>
+                        <button class="btn-dismiss" on:click={() => dismissProspect(p.id)}>Dismiss</button>
+                      </div>
                     </td>
                   </tr>
+                  {#if expandedNotes[p.id]}
+                  <tr class="note-row">
+                    <td colspan="4">
+                      <div class="inline-note">
+                        <textarea
+                          bind:value={noteTexts[p.id]}
+                          placeholder="Coach notes — visible only to you…"
+                          on:blur={() => saveNote(p.id)}
+                        ></textarea>
+                        <div class="note-footer">
+                          {#if noteStatus[p.id] === 'saving'}
+                            <span class="note-status">Saving…</span>
+                          {:else if noteStatus[p.id] === 'saved'}
+                            <span class="note-status saved">Saved</span>
+                          {:else}
+                            <span class="note-status idle">Auto-saves on blur</span>
+                          {/if}
+                          <button class="btn-save-note" on:click={() => saveNote(p.id)} disabled={noteStatus[p.id] === 'saving'}>Save</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  {/if}
                 {/each}
               </tbody>
             </table>
@@ -166,6 +235,46 @@
                         {:else}
                           →
                         {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </section>
+      {/if}
+
+      <!-- Dismissed Prospects -->
+      {#if dismissedProspects.length > 0}
+        <section>
+          <button type="button" class="section-header archived-toggle" on:click={() => dismissedOpen = !dismissedOpen}>
+            <p class="section-label">Dismissed <span class="count count--muted">{dismissedProspects.length}</span></p>
+            <span class="chevron" class:open={dismissedOpen}>›</span>
+          </button>
+
+          {#if dismissedOpen}
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Submitted</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each dismissedProspects as p}
+                    <tr class="archived-row">
+                      <td class="name muted">{p.first_name} {p.last_name}</td>
+                      <td class="muted">{p.email}</td>
+                      <td class="muted">{new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                      <td class="action-cell">
+                        <div class="row-actions">
+                          <a href="/dashboard/intake/{p.id}" class="btn-outline">View Intake</a>
+                          <button class="btn-undismiss" on:click={() => undismissProspect(p.id)}>Restore</button>
+                        </div>
                       </td>
                     </tr>
                   {/each}
@@ -346,4 +455,116 @@
 
   .archived-row td { opacity: 0.6; }
   .archived-row:hover td { opacity: 1; }
+
+  .row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .btn-note-toggle {
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--mid-grey);
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .btn-note-toggle:hover, .btn-note-toggle.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-dismiss {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-dismiss:hover { color: var(--error); border-color: var(--error); }
+
+  .btn-undismiss {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-undismiss:hover { color: var(--black); border-color: var(--black); }
+
+  .note-row td {
+    padding: 0;
+    border-bottom: 1px solid var(--light-grey);
+  }
+
+  .inline-note {
+    padding: 12px 16px;
+    background: var(--warm-white);
+  }
+
+  .inline-note textarea {
+    width: 100%;
+    min-height: 72px;
+    background: white;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 6px;
+    color: var(--black);
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    resize: vertical;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+  .inline-note textarea:focus { border-color: var(--accent); }
+
+  .note-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+
+  .note-status { font-size: 12px; color: var(--mid-grey); }
+  .note-status.saved { color: var(--success); }
+
+  .btn-save-note {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--black);
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .btn-save-note:hover:not(:disabled) { border-color: var(--black); }
+  .btn-save-note:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
