@@ -191,25 +191,12 @@
     archiveError = '';
     archiving = true;
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: result, error } = await supabase.functions.invoke('archive-client', {
+      body: { client_id: client.id },
+    });
 
-    const res = await fetch(
-      'https://uftthvphkmccerergxup.supabase.co/functions/v1/archive-client',
-      {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey':        'sb_publishable_TkYdMrUsU_XEevuHix1nmg_F2oYVPl7',
-        },
-        body: JSON.stringify({ client_id: client.id }),
-      }
-    );
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      archiveError = result.error ?? 'Something went wrong.';
+    if (error) {
+      archiveError = error.message ?? 'Something went wrong.';
       archiving = false;
       archiveConfirm = false;
       return;

@@ -46,28 +46,12 @@
     converting = true;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('[convert] session user:', session?.user?.email ?? 'NULL');
+      const { data: result, error } = await supabase.functions.invoke('convert-to-client', {
+        body: { intake_id: intake.id },
+      });
 
-      const res = await fetch(
-        'https://uftthvphkmccerergxup.supabase.co/functions/v1/convert-to-client',
-        {
-          method:  'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey':        'sb_publishable_TkYdMrUsU_XEevuHix1nmg_F2oYVPl7',
-          },
-          body: JSON.stringify({ intake_id: intake.id }),
-        }
-      );
-
-      console.log('[convert] status:', res.status);
-      const result = await res.json();
-      console.log('[convert] result:', JSON.stringify(result));
-
-      if (!res.ok) {
-        convertError = result.error ?? `HTTP ${res.status} — check console`;
+      if (error) {
+        convertError = error.message || 'Something went wrong. Please try again.';
         converting = false;
         return;
       }
@@ -81,7 +65,6 @@
 
       goto(`/dashboard/client/${result.client_id}`);
     } catch (err) {
-      console.error('[convert] threw:', err);
       convertError = err.message || 'Something went wrong. Please try again.';
       converting = false;
     }
