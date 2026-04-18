@@ -299,12 +299,6 @@
               {#if expanded[c.id]}
               <!-- Quick metrics -->
               <div class="metrics-row">
-                {#if c.progress_trend}
-                  <div class="metric">
-                    <span class="metric-label">Performance</span>
-                    <span class="metric-value">{c.progress_trend}</span>
-                  </div>
-                {/if}
                 {#if c.soreness}
                   <div class="metric">
                     <span class="metric-label">Soreness</span>
