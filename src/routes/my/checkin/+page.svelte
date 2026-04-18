@@ -15,6 +15,7 @@
   let missedSessions = 0;
   let missedReason = '';
   let bestLift = '';
+  let progressTrend = '';
   let programFeedback = '';
   let soreness = '';
   let sorenessNotes = '';
@@ -97,6 +98,7 @@
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!progressTrend) { error = 'Please select how performance felt this week.'; return; }
     if (!soreness)      { error = 'Please select a soreness level.'; return; }
     error = '';
     loading = true;
@@ -106,6 +108,7 @@
       week_ending:         weekEnding,
       missed_sessions:     missedSessions > 0 ? missedSessions : null,
       best_lift:           bestLift,
+      progress_trend:      progressTrend,
       program_feedback:    [missedReason, programFeedback].filter(Boolean).join('\n\n'),
       soreness:             SORENESS_MAP[soreness],
       soreness_notes:       sorenessNotes,
@@ -199,6 +202,18 @@
           <label for="bestLift">Best Lift or Performance This Week <span class="req">*</span></label>
           <input type="text" id="bestLift" bind:value={bestLift}
             placeholder="e.g. Deadlift 140kg × 3, ran 5k in 24:30, hit a new gymnastics skill..." required />
+        </div>
+
+        <div class="field">
+          <label>Compared to Last Week, Performance Felt: <span class="req">*</span></label>
+          <div class="option-group">
+            {#each ['Noticeably down', 'About the same', 'Slightly better', 'Significantly better'] as opt}
+              <label class="option-chip" class:selected={progressTrend === opt}>
+                <input type="radio" bind:group={progressTrend} value={opt} />
+                {opt}
+              </label>
+            {/each}
+          </div>
         </div>
 
         <div class="field">
