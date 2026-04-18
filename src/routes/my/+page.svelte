@@ -67,7 +67,7 @@
         .eq('id', role.client_id)
         .single(),
       supabase.from('checkins')
-        .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, upcoming_disruptions, disruption_notes')
+        .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, stress_level, upcoming_disruptions, disruption_notes')
         .eq('client_id', role.client_id)
         .order('week_ending', { ascending: false }),
     ]);
@@ -140,25 +140,31 @@
     makeChart(sleepCanvas,     'Sleep (hrs)',         sorted.map(c => c.sleep_hours),          '#72C872', 1, 10, null);
 
     // Habit web — 4-week rolling average, all axes normalized 0–10
+    // Axis order (flat-top hexagon, startAngle 30°):
+    // Sleep(1o'c) · Nutrition(3) · Recovery(5) · Stress(7) · Week Rating(9) · Consistency(11)
     if (radarCanvas && sorted.length >= 1) {
       const recent = sorted.slice(-4);
-      const avg = key => recent.reduce((s, c) => s + (c[key] ?? 0), 0) / recent.length;
+      const avgOf = key => {
+        const vals = recent.map(c => c[key]).filter(v => v != null);
+        return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+      };
 
       const radarData = [
-        parseFloat(((avg('week_rating') / 5) * 10).toFixed(1)),          // 1–5 → 0–10
-        parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),   // 0–4 missed → 10–0 inverted
-        parseFloat(avg('nutrition_adherence').toFixed(1)),                 // 1–10 direct
-        parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),// 8 hrs = 10
-        parseFloat((Math.min((4 - avg('soreness')) / 3 * 10, 10)).toFixed(1)), // 1–4 soreness → 10–0 inverted, clamped to 10
+        parseFloat((Math.min(avgOf('sleep_hours') / 8, 1) * 10).toFixed(1)),              // Sleep
+        parseFloat(avgOf('nutrition_adherence').toFixed(1)),                               // Nutrition
+        parseFloat((Math.min((4 - avgOf('soreness')) / 3 * 10, 10)).toFixed(1)),          // Recovery
+        parseFloat((Math.min((10 - avgOf('stress_level')) / 9 * 10, 10)).toFixed(1)),     // Stress (inverted)
+        parseFloat(((avgOf('week_rating') / 5) * 10).toFixed(1)),                         // Week Rating
+        parseFloat(((4 - avgOf('missed_sessions')) / 4 * 10).toFixed(1)),                 // Consistency
       ];
 
-      const fillHex   = color || '#6888E8';          // original color for fill
-      const borderHex = contrastColor(fillHex);      // darkened if too light for white bg
+      const fillHex   = color || '#6888E8';
+      const borderHex = contrastColor(fillHex);
 
       const radarChart = new Chart(radarCanvas.getContext('2d'), {
         type: 'radar',
         data: {
-          labels: ['Week\nRating', 'Consistency', 'Nutrition', 'Sleep', 'Recovery'],
+          labels: ['Sleep', 'Nutrition', 'Recovery', 'Stress', 'Week\nRating', 'Consistency'],
           datasets: [{
             label: '4-Week Average',
             data: radarData,
@@ -174,16 +180,12 @@
           maintainAspectRatio: true,
           plugins: {
             legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: ctx => `${ctx.raw} / 10`
-              }
-            }
+            tooltip: { callbacks: { label: ctx => `${ctx.raw} / 10` } }
           },
           scales: {
             r: {
-              min: 0,
-              max: 10,
+              min: 0, max: 10,
+              startAngle: 30,
               ticks: { stepSize: 2, display: false },
               grid: { color: 'rgba(0,0,0,0.07)' },
               angleLines: { color: 'rgba(0,0,0,0.07)' },
@@ -319,6 +321,12 @@
                   <div class="metric">
                     <span class="metric-label">Sleep</span>
                     <span class="metric-value">{c.sleep_hours} hrs</span>
+                  </div>
+                {/if}
+                {#if c.stress_level}
+                  <div class="metric">
+                    <span class="metric-label">Stress</span>
+                    <span class="metric-value">{c.stress_level} / 10</span>
                   </div>
                 {/if}
                 {#if c.bodyweight}

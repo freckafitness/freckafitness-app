@@ -20,7 +20,7 @@
   let archiveError   = '';
 
   // Chart canvas refs
-  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
+  let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, stressCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
   let charts = [];
   let comparisonChart = null;
   let chartsReady     = false;
@@ -43,14 +43,21 @@
   ];
 
   function radarDataFrom(subset) {
-    if (!subset.length) return [0, 0, 0, 0, 0];
-    const avg = key => subset.reduce((s, c) => s + (c[key] ?? 0), 0) / subset.length;
+    if (!subset.length) return [0, 0, 0, 0, 0, 0];
+    // Null-safe average — excludes missing values rather than treating them as 0
+    const avgOf = key => {
+      const vals = subset.map(c => c[key]).filter(v => v != null);
+      return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+    };
+    // Axis order matches startAngle:30 flat-top hexagon:
+    // Sleep(1o'c) · Nutrition(3) · Recovery(5) · Stress(7) · Week Rating(9) · Consistency(11)
     return [
-      parseFloat(((avg('week_rating') / 5) * 10).toFixed(1)),
-      parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),
-      parseFloat(avg('nutrition_adherence').toFixed(1)),
-      parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),
-      parseFloat((Math.min((4 - avg('soreness')) / 3 * 10, 10)).toFixed(1)),
+      parseFloat((Math.min(avgOf('sleep_hours') / 8, 1) * 10).toFixed(1)),           // Sleep
+      parseFloat(avgOf('nutrition_adherence').toFixed(1)),                            // Nutrition
+      parseFloat((Math.min((4 - avgOf('soreness')) / 3 * 10, 10)).toFixed(1)),       // Recovery
+      parseFloat((Math.min((10 - avgOf('stress_level')) / 9 * 10, 10)).toFixed(1)),  // Stress (inverted)
+      parseFloat(((avgOf('week_rating') / 5) * 10).toFixed(1)),                      // Week Rating
+      parseFloat(((4 - avgOf('missed_sessions')) / 4 * 10).toFixed(1)),              // Consistency
     ];
   }
 
@@ -84,7 +91,7 @@
       },
       scales: {
         r: {
-          min: 0, max: 10,
+          min: 0, max: 10, startAngle: 30,
           ticks: { stepSize: 2, display: false },
           grid: { color: 'rgba(0,0,0,0.07)' },
           angleLines: { color: 'rgba(0,0,0,0.07)' },
@@ -108,7 +115,7 @@
     comparisonChart = new Chart(comparisonCanvas.getContext('2d'), {
       type: 'radar',
       data: {
-        labels: ['Week\nRating', 'Consistency', 'Nutrition', 'Sleep', 'Recovery'],
+        labels: ['Sleep', 'Nutrition', 'Recovery', 'Stress', 'Week\nRating', 'Consistency'],
         datasets: [{ label: 'Period Average', data: radarDataFrom(subset),
           borderColor: borderHex, backgroundColor: fillHex + '28',
           pointBackgroundColor: borderHex, pointRadius: 4, borderWidth: 2 }]
@@ -260,7 +267,8 @@
     makeChart(nutritionCanvas,   'Nutrition',        sorted.map(c => c.nutrition_adherence), '#c8a96e', 1, 10,   null);
     makeChart(sorenessCanvas,    'Soreness',         sorted.map(c => c.soreness),            '#E87878', 1, 4,    sorenessLabels);
     makeChart(missedCanvas,      'Missed Sessions',  sorted.map(c => c.missed_sessions ?? 0),'#5CC4B8', 0, 4,    { 0:'0', 1:'1', 2:'2', 3:'3', 4:'>3' });
-    makeChart(sleepCanvas,      'Sleep (hrs)',             sorted.map(c => c.sleep_hours), '#72C872', 1, 10, null);
+    makeChart(sleepCanvas,      'Sleep (hrs)',             sorted.map(c => c.sleep_hours),   '#72C872', 1, 10,  null);
+    makeChart(stressCanvas,     'Stress Level',            sorted.map(c => c.stress_level),  '#9b72c8', 1, 10,  null);
     const bwData = sorted.map(c => c.bodyweight == null ? null
       : displayUnit === 'lbs' ? parseFloat((c.bodyweight * 2.2046).toFixed(1)) : c.bodyweight);
     makeChart(bodyweightCanvas, `Body Weight (${displayUnit})`, bwData, '#c8a96e', undefined, undefined, null);
@@ -272,7 +280,7 @@
       const radarChart = new Chart(radarCanvas.getContext('2d'), {
         type: 'radar',
         data: {
-          labels: ['Week\nRating', 'Consistency', 'Nutrition', 'Sleep', 'Recovery'],
+          labels: ['Sleep', 'Nutrition', 'Recovery', 'Stress', 'Week\nRating', 'Consistency'],
           datasets: [{ label: '4-Week Average', data: radarDataFrom(sorted.slice(-4)),
             borderColor: borderHex, backgroundColor: fillHex + '28',
             pointBackgroundColor: borderHex, pointRadius: 4, borderWidth: 2 }]
@@ -482,6 +490,10 @@
             <p class="chart-label">Sleep (hrs)</p>
             <canvas bind:this={sleepCanvas}></canvas>
           </div>
+          <div class="chart-wrap">
+            <p class="chart-label">Stress Level</p>
+            <canvas bind:this={stressCanvas}></canvas>
+          </div>
           {#if client?.show_bodyweight}
           <div class="chart-wrap">
             <div class="chart-label-row">
@@ -557,6 +569,12 @@
                     <div class="metric">
                       <span class="metric-label">Sleep</span>
                       <span class="metric-value">{c.sleep_hours} hrs</span>
+                    </div>
+                  {/if}
+                  {#if c.stress_level}
+                    <div class="metric">
+                      <span class="metric-label">Stress</span>
+                      <span class="metric-value">{c.stress_level} / 10</span>
                     </div>
                   {/if}
                   {#if c.bodyweight}

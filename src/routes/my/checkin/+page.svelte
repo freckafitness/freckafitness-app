@@ -20,6 +20,7 @@
   let soreness = '';
   let sorenessNotes = '';
   let sleepHours = 7;
+  let stressLevel = 5;
   let showBodyweight = false;
   let bodyweight = '';
   let weightUnit = 'kg';
@@ -52,6 +53,7 @@
   $: nutritionPct = ((nutritionAdherence - 1) / 9) * 100;
   $: ratingPct    = ((weekRating - 1) / 4) * 100;
   $: sleepPct     = ((sleepHours - 1) / 9) * 100;
+  $: stressPct    = ((stressLevel - 1) / 9) * 100;
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -111,6 +113,7 @@
       soreness:             SORENESS_MAP[soreness],
       soreness_notes:       sorenessNotes,
       sleep_hours:          sleepHours,
+      stress_level:         stressLevel,
       bodyweight:           showBodyweight && bodyweight !== ''
                               ? parseFloat(weightUnit === 'lbs' ? (parseFloat(bodyweight) / 2.2046).toFixed(1) : bodyweight)
                               : null,
@@ -251,6 +254,17 @@
               style="background: linear-gradient(to right, var(--accent) 0%, var(--accent) {sleepPct}%, var(--light-grey) {sleepPct}%, var(--light-grey) 100%)" />
             <span class="scale-value">{sleepHours} hrs</span>
             <span class="scale-label">Full</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Overall stress load this week</label>
+          <div class="scale-wrap">
+            <span class="scale-label">Calm</span>
+            <input type="range" min="1" max="10" step="1" bind:value={stressLevel}
+              style="background: linear-gradient(to right, var(--accent) 0%, var(--accent) {stressPct}%, var(--light-grey) {stressPct}%, var(--light-grey) 100%)" />
+            <span class="scale-value">{stressLevel}</span>
+            <span class="scale-label">High Load</span>
           </div>
         </div>
 
