@@ -149,7 +149,7 @@
         parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),   // 0–4 missed → 10–0 inverted
         parseFloat(avg('nutrition_adherence').toFixed(1)),                 // 1–10 direct
         parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),// 8 hrs = 10
-        parseFloat(((4 - avg('soreness')) / 3 * 10).toFixed(1)),          // 1–4 soreness → 10–0 inverted
+        parseFloat((Math.min((4 - avg('soreness')) / 3 * 10, 10)).toFixed(1)), // 1–4 soreness → 10–0 inverted, clamped to 10
       ];
 
       const fillHex   = color || '#6888E8';          // original color for fill

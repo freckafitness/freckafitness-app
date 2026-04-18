@@ -50,7 +50,7 @@
       parseFloat(((4 - avg('missed_sessions')) / 4 * 10).toFixed(1)),
       parseFloat(avg('nutrition_adherence').toFixed(1)),
       parseFloat((Math.min(avg('sleep_hours') / 8, 1) * 10).toFixed(1)),
-      parseFloat(((4 - avg('soreness')) / 3 * 10).toFixed(1)),
+      parseFloat((Math.min((4 - avg('soreness')) / 3 * 10, 10)).toFixed(1)),
     ];
   }
 
