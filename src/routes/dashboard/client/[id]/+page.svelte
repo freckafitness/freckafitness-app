@@ -20,14 +20,18 @@
   let archiveError   = '';
 
   // Billing
-  let payments        = [];
-  let linkFormOpen    = false;
-  let linkPriceId     = '';
-  let linkProductName = '';
-  let linkMode        = 'subscription';
-  let linkLoading     = false;
-  let linkUrl         = '';
-  let linkError       = '';
+  let payments          = [];
+  let linkFormOpen      = false;
+  let linkPriceId       = '';
+  let linkProductName   = '';
+  let linkMode          = 'subscription';
+  let linkLoading       = false;
+  let linkUrl           = '';
+  let linkError         = '';
+  let stripeProducts    = [];
+  let productsLoading   = false;
+  let selectedProductId = '';
+  let selectedPriceId   = '';
 
   // Chart canvas refs
   let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, stressCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
@@ -360,12 +364,35 @@
     return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
 
+  async function openLinkForm() {
+    linkFormOpen      = !linkFormOpen;
+    linkUrl           = '';
+    linkError         = '';
+    selectedProductId = '';
+    selectedPriceId   = '';
+    if (linkFormOpen && stripeProducts.length === 0) {
+      productsLoading = true;
+      const { data } = await supabase.functions.invoke('list-stripe-products');
+      stripeProducts  = data?.products ?? [];
+      productsLoading = false;
+    }
+  }
+
+  $: selectedProduct = stripeProducts.find(p => p.id === selectedProductId) ?? null;
+
+  $: if (selectedProduct) {
+    const price       = selectedProduct.prices[0];
+    selectedPriceId   = price?.id ?? '';
+    linkMode          = price?.mode ?? 'subscription';
+    linkProductName   = selectedProduct.name;
+  }
+
   async function generateLink() {
     linkLoading = true;
     linkUrl     = '';
     linkError   = '';
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { client_id: client.id, price_id: linkPriceId, product_name: linkProductName, mode: linkMode },
+      body: { client_id: client.id, price_id: selectedPriceId, product_name: linkProductName, mode: linkMode },
     });
     linkLoading = false;
     if (error || !data?.url) {
@@ -455,36 +482,51 @@
       <section class="billing-section">
         <div class="section-header">
           <h2>Billing</h2>
-          <button class="btn-outline" on:click={() => { linkFormOpen = !linkFormOpen; linkUrl = ''; linkError = ''; }}>
+          <button class="btn-outline" on:click={openLinkForm}>
             {linkFormOpen ? 'Cancel' : '+ Payment Link'}
           </button>
         </div>
 
         {#if linkFormOpen}
           <div class="link-form">
-            <div class="link-form-row">
-              <div class="link-form-field">
-                <label class="field-label">Price ID <span class="label-hint">(from Stripe)</span></label>
-                <input type="text" bind:value={linkPriceId} placeholder="price_..." />
+            {#if productsLoading}
+              <p class="products-loading">Loading products…</p>
+            {:else if stripeProducts.length === 0}
+              <p class="products-loading">No active products found in Stripe.</p>
+            {:else}
+              <div class="link-form-row">
+                <div class="link-form-field">
+                  <span class="field-label">Product</span>
+                  <select bind:value={selectedProductId}>
+                    <option value="">Select a product…</option>
+                    {#each stripeProducts as product}
+                      <option value={product.id}>{product.name}</option>
+                    {/each}
+                  </select>
+                </div>
+                {#if selectedProduct && selectedProduct.prices.length > 1}
+                  <div class="link-form-field link-form-field--narrow">
+                    <span class="field-label">Price</span>
+                    <select bind:value={selectedPriceId} on:change={e => {
+                      const price = selectedProduct.prices.find(p => p.id === e.target.value);
+                      if (price) linkMode = price.mode;
+                    }}>
+                      {#each selectedProduct.prices as price}
+                        <option value={price.id}>
+                          ${(price.amount / 100).toFixed(2)}{price.interval ? ' / ' + price.interval : ''}
+                        </option>
+                      {/each}
+                    </select>
+                  </div>
+                {/if}
               </div>
-              <div class="link-form-field">
-                <label class="field-label">Product Name</label>
-                <input type="text" bind:value={linkProductName} placeholder="Monthly Coaching" />
+              <div class="link-form-actions">
+                <button class="btn-primary" on:click={generateLink} disabled={!selectedPriceId || linkLoading}>
+                  {linkLoading ? 'Generating…' : 'Generate Link'}
+                </button>
+                {#if linkError}<span class="link-error">{linkError}</span>{/if}
               </div>
-              <div class="link-form-field link-form-field--narrow">
-                <label class="field-label">Type</label>
-                <select bind:value={linkMode}>
-                  <option value="subscription">Subscription</option>
-                  <option value="payment">One-Time</option>
-                </select>
-              </div>
-            </div>
-            <div class="link-form-actions">
-              <button class="btn-primary" on:click={generateLink} disabled={!linkPriceId || linkLoading}>
-                {linkLoading ? 'Generating…' : 'Generate Link'}
-              </button>
-              {#if linkError}<span class="link-error">{linkError}</span>{/if}
-            </div>
+            {/if}
             {#if linkUrl}
               <div class="link-result">
                 <span class="link-url">{linkUrl}</span>
@@ -1440,6 +1482,12 @@
 
   .link-form-field input:focus,
   .link-form-field select:focus { border-color: var(--accent); }
+
+  .products-loading {
+    font-size: 13px;
+    color: var(--mid-grey);
+    padding: 4px 0;
+  }
 
   .label-hint {
     font-size: 10px;
