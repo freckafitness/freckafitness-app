@@ -338,6 +338,14 @@
           <h2>Check-In History
             <span class="count">{checkinSearch ? filteredCheckins.length + ' / ' : ''}{checkins.length}</span>
           </h2>
+          <button class="btn-expand-all" on:click={() => {
+            const allExpanded = filteredCheckins.every(c => expanded[c.id]);
+            expanded = allExpanded
+              ? Object.fromEntries(filteredCheckins.map(c => [c.id, false]))
+              : Object.fromEntries(filteredCheckins.map(c => [c.id, true]));
+          }}>
+            {filteredCheckins.every(c => expanded[c.id]) ? 'Collapse All' : 'Expand All'}
+          </button>
           <div class="search-row">
             <input class="search-input" type="search" bind:value={checkinSearch} placeholder="Search check-ins…"
               on:keydown={e => { if (e.key === 'Enter') navSearch(1); }} />
@@ -639,6 +647,23 @@
   }
 
   .section-header-row h2 { margin-bottom: 0; }
+
+  .btn-expand-all {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    background: none;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 5px 12px;
+    color: var(--mid-grey);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .btn-expand-all:hover { border-color: var(--black); color: var(--black); }
 
   .search-row {
     display: flex;
