@@ -12,6 +12,7 @@
   let checkins    = [];
   let checkinDone = false;
   let expanded    = {};
+  let checkinSearch = '';
 
   let ratingCanvas, missedCanvas, nutritionCanvas, sleepCanvas, radarCanvas;
   let charts = [];
@@ -208,6 +209,18 @@
   function toggle(id) {
     expanded = { ...expanded, [id]: !expanded[id] };
   }
+
+  function matchesSearch(c, q) {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return [
+      c.week_ending, c.progress_trend, c.best_lift,
+      c.program_feedback, c.soreness_notes, c.nutrition_notes,
+      c.disruption_notes, c.for_ryan, c.coach_notes,
+    ].some(v => v && v.toLowerCase().includes(s));
+  }
+
+  $: filteredCheckins = checkins.filter(c => matchesSearch(c, checkinSearch));
 </script>
 
 <svelte:head><title>My Portal — Frecka Fitness</title></svelte:head>
@@ -271,10 +284,13 @@
     <!-- Check-in history -->
     {#if checkins.length > 0}
       <section>
-        <h2>Check-In History <span class="count">{checkins.length}</span></h2>
+        <div class="section-header-row">
+          <h2>Check-In History <span class="count">{checkins.length}</span></h2>
+          <input class="search-input" type="search" bind:value={checkinSearch} placeholder="Search check-ins…" />
+        </div>
 
         <div class="checkin-list">
-          {#each checkins as c}
+          {#each filteredCheckins as c}
             <div class="checkin-card">
 
               <!-- Header (always visible, toggles expand) -->
@@ -554,6 +570,30 @@
   }
 
   /* Cards */
+  .section-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+  }
+
+  .section-header-row h2 { margin-bottom: 0; }
+
+  .search-input {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 13px;
+    padding: 7px 12px;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 5px;
+    background: white;
+    color: var(--black);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
   .checkin-list { display: flex; flex-direction: column; gap: 20px; }
 
   .checkin-card {

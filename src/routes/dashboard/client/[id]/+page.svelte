@@ -14,6 +14,7 @@
 
   let notesState     = {};
   let expanded       = {};
+  let checkinSearch  = '';
   let displayUnit    = 'kg';
   let archiveConfirm = false;
   let archiving      = false;
@@ -142,6 +143,18 @@
     comparisonPeriod; customFrom; customTo;
     drawComparisonRadar();
   }
+
+  function matchesSearch(c, q) {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return [
+      c.week_ending, c.progress_trend, c.best_lift,
+      c.program_feedback, c.soreness_notes, c.nutrition_notes,
+      c.disruption_notes, c.for_ryan, c.coach_notes,
+    ].some(v => v && v.toLowerCase().includes(s));
+  }
+
+  $: filteredCheckins = checkins.filter(c => matchesSearch(c, checkinSearch));
 
   function contrastColor(hex) {
     if (!hex) return '#6888E8';
@@ -651,15 +664,18 @@
 
       <!-- Check-ins -->
       <section>
-        <div class="section-header">
+        <div class="section-header checkin-section-header">
           <h2>Check-Ins <span class="count">{checkins.length}</span></h2>
+          {#if checkins.length > 0}
+            <input class="search-input" type="search" bind:value={checkinSearch} placeholder="Search check-ins…" />
+          {/if}
         </div>
 
         {#if checkins.length === 0}
           <p class="empty">No check-ins yet.</p>
         {:else}
           <div class="checkin-list">
-            {#each checkins as c}
+            {#each filteredCheckins as c}
               <div class="checkin-card">
 
                 <!-- Card header -->
@@ -1432,6 +1448,26 @@
     transition: color 0.15s;
   }
   .prev-stint-link:hover { color: var(--black); }
+
+  .checkin-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .search-input {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 13px;
+    padding: 7px 12px;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 5px;
+    background: white;
+    color: var(--black);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--accent); }
 
   /* Billing */
   .billing-section { margin-bottom: 40px; }
