@@ -16,7 +16,13 @@
   let modalOpen = false;
   let weightUnit = 'lbs';
   let showBodyweight = false;
-  let welcomeNote = '';
+  let welcomeNote = `Welcome to your personalized Frecka Fitness Client Portal!
+
+Take a second to explore the new features, including:
+- Habit Web: A visual snapshot of your habits. Expand your web over time as you improve consistency.
+- Structured Data History: Trends you couldn't see from conversations alone, all in one place.
+- Accountability w/ Less Friction: Weekly formal check-ins to give a clear path forward
+- Coach Notes per Check-in: Tangible takeaways week-to-week in a searchable, chronological order`;
   let converted = false;
   let convertedClientId = null;
 
