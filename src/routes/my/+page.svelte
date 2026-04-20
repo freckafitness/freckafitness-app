@@ -210,17 +210,67 @@
     expanded = { ...expanded, [id]: !expanded[id] };
   }
 
-  function matchesSearch(c, q) {
-    if (!q) return true;
-    const s = q.toLowerCase();
+  let searchMatchIdx = 0;
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function highlight(text, q) {
+    if (!q || !text) return escapeHtml(text ?? '');
+    const escaped = escapeHtml(text);
+    // Highlight each non-operator term
+    const terms = q.split(/\bOR\b/i).flatMap(g => g.trim().split(/\s+/))
+      .filter(t => t && !t.startsWith('-'));
+    let result = escaped;
+    terms.forEach(term => {
+      const re = new RegExp(`(${term.replace(/\*/g, '\\S*').replace(/[.+?^${}()|[\]\\]/g, c => c === '*' ? c : '\\' + c)})`, 'gi');
+      result = result.replace(re, '<mark>$1</mark>');
+    });
+    return result;
+  }
+
+  function checkinText(c) {
     return [
       c.week_ending, c.progress_trend, c.best_lift,
       c.program_feedback, c.soreness_notes, c.nutrition_notes,
       c.disruption_notes, c.for_ryan, c.coach_notes,
-    ].some(v => v && v.toLowerCase().includes(s));
+    ].filter(Boolean).join(' ').toLowerCase();
+  }
+
+  function termMatches(text, term) {
+    const pat = term.replace(/\*/g, '.*').replace(/[.+?^${}()|[\]\\]/g, c => c === '*' ? c : '\\' + c);
+    return new RegExp(pat.replace(/\\\.\*/g, '.*'), 'i').test(text);
+  }
+
+  function matchesSearch(c, q) {
+    if (!q.trim()) return true;
+    const text = checkinText(c);
+    const orGroups = q.split(/\bOR\b/i);
+    return orGroups.some(group => {
+      const terms = group.trim().split(/\s+/).filter(Boolean);
+      return terms.every(term => {
+        if (term.startsWith('-') && term.length > 1) return !termMatches(text, term.slice(1));
+        return termMatches(text, term);
+      });
+    });
   }
 
   $: filteredCheckins = checkins.filter(c => matchesSearch(c, checkinSearch));
+  $: if (checkinSearch) {
+    expanded = Object.fromEntries(filteredCheckins.map(c => [c.id, true]));
+    searchMatchIdx = 0;
+  }
+
+  function scrollToMatch(idx) {
+    const cards = document.querySelectorAll('.checkin-card');
+    if (cards[idx]) cards[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function navSearch(dir) {
+    searchMatchIdx = (searchMatchIdx + dir + filteredCheckins.length) % filteredCheckins.length;
+    scrollToMatch(searchMatchIdx);
+  }
 </script>
 
 <svelte:head><title>My Portal — Frecka Fitness</title></svelte:head>
@@ -285,8 +335,18 @@
     {#if checkins.length > 0}
       <section>
         <div class="section-header-row">
-          <h2>Check-In History <span class="count">{checkins.length}</span></h2>
-          <input class="search-input" type="search" bind:value={checkinSearch} placeholder="Search check-ins…" />
+          <h2>Check-In History
+            <span class="count">{checkinSearch ? filteredCheckins.length + ' / ' : ''}{checkins.length}</span>
+          </h2>
+          <div class="search-row">
+            <input class="search-input" type="search" bind:value={checkinSearch} placeholder="Search check-ins…"
+              on:keydown={e => { if (e.key === 'Enter') navSearch(1); }} />
+            {#if checkinSearch && filteredCheckins.length > 0}
+              <button class="nav-btn" on:click={() => navSearch(-1)}>↑</button>
+              <button class="nav-btn" on:click={() => navSearch(1)}>↓</button>
+              <span class="match-count">{searchMatchIdx + 1} / {filteredCheckins.length}</span>
+            {/if}
+          </div>
         </div>
 
         <div class="checkin-list">
@@ -354,37 +414,37 @@
                 {#if c.best_lift}
                   <div class="card-field">
                     <p class="field-label">Best Lift</p>
-                    <p class="field-value">{c.best_lift}</p>
+                    <p class="field-value">{@html highlight(c.best_lift, checkinSearch)}</p>
                   </div>
                 {/if}
                 {#if c.program_feedback}
                   <div class="card-field card-field--full">
                     <p class="field-label">Program Feedback</p>
-                    <p class="field-value">{c.program_feedback}</p>
+                    <p class="field-value">{@html highlight(c.program_feedback, checkinSearch)}</p>
                   </div>
                 {/if}
                 {#if c.soreness_notes}
                   <div class="card-field card-field--full">
                     <p class="field-label">Soreness Notes</p>
-                    <p class="field-value">{c.soreness_notes}</p>
+                    <p class="field-value">{@html highlight(c.soreness_notes, checkinSearch)}</p>
                   </div>
                 {/if}
                 {#if c.nutrition_notes}
                   <div class="card-field card-field--full">
                     <p class="field-label">Nutrition Notes</p>
-                    <p class="field-value">{c.nutrition_notes}</p>
+                    <p class="field-value">{@html highlight(c.nutrition_notes, checkinSearch)}</p>
                   </div>
                 {/if}
                 {#if c.upcoming_disruptions}
                   <div class="card-field card-field--full disruption-flag">
                     <p class="field-label">Upcoming Disruption</p>
-                    <p class="field-value">{c.disruption_notes || 'Flagged — no details provided'}</p>
+                    <p class="field-value">{@html highlight(c.disruption_notes || 'Flagged — no details provided', checkinSearch)}</p>
                   </div>
                 {/if}
                 {#if c.for_ryan}
                   <div class="card-field card-field--full for-me">
                     <p class="field-label">Your note to me</p>
-                    <p class="field-value">{c.for_ryan}</p>
+                    <p class="field-value">{@html highlight(c.for_ryan, checkinSearch)}</p>
                   </div>
                 {/if}
               </div>
@@ -393,7 +453,7 @@
               {#if c.coach_notes}
                 <div class="coach-note">
                   <p class="coach-note-label">Ryan's Notes</p>
-                  <p class="coach-note-text">{c.coach_notes}</p>
+                  <p class="coach-note-text">{@html highlight(c.coach_notes, checkinSearch)}</p>
                 </div>
               {/if}
               {/if}
@@ -580,6 +640,12 @@
 
   .section-header-row h2 { margin-bottom: 0; }
 
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .search-input {
     font-family: 'Halyard Display', sans-serif;
     font-size: 13px;
@@ -593,6 +659,34 @@
     transition: border-color 0.15s;
   }
   .search-input:focus { border-color: var(--accent); }
+
+  .nav-btn {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    background: none;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: var(--black);
+    transition: border-color 0.15s;
+    line-height: 1;
+  }
+  .nav-btn:hover { border-color: var(--black); }
+
+  .match-count {
+    font-size: 12px;
+    color: var(--mid-grey);
+    white-space: nowrap;
+  }
+
+  :global(mark) {
+    background: #fff3b0;
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
 
   .checkin-list { display: flex; flex-direction: column; gap: 20px; }
 
