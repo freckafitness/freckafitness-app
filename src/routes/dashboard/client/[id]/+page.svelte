@@ -19,6 +19,16 @@
   let archiving      = false;
   let archiveError   = '';
 
+  // Billing
+  let payments        = [];
+  let linkFormOpen    = false;
+  let linkPriceId     = '';
+  let linkProductName = '';
+  let linkMode        = 'subscription';
+  let linkLoading     = false;
+  let linkUrl         = '';
+  let linkError       = '';
+
   // Chart canvas refs
   let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, stressCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
   let charts = [];
@@ -171,15 +181,17 @@
 
     const id = $page.params.id;
 
-    const [{ data: c }, { data: ch }, { data: i }] = await Promise.all([
+    const [{ data: c }, { data: ch }, { data: i }, { data: p }] = await Promise.all([
       supabase.from('clients').select('*').eq('id', id).single(),
       supabase.from('checkins').select('*').eq('client_id', id).order('week_ending', { ascending: false }),
       supabase.from('intakes').select('id').eq('client_id', id).maybeSingle(),
+      supabase.from('payments').select('*').eq('client_id', id).order('created_at', { ascending: false }),
     ]);
 
     client   = c;
     checkins = ch ?? [];
     intake   = i;
+    payments = p ?? [];
 
     if (checkins.length) {
       const sorted = [...checkins].sort((a, b) => a.week_ending.localeCompare(b.week_ending));
@@ -348,6 +360,21 @@
     return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
 
+  async function generateLink() {
+    linkLoading = true;
+    linkUrl     = '';
+    linkError   = '';
+    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      body: { client_id: client.id, price_id: linkPriceId, product_name: linkProductName, mode: linkMode },
+    });
+    linkLoading = false;
+    if (error || !data?.url) {
+      linkError = data?.error ?? error?.message ?? 'Failed to generate link';
+    } else {
+      linkUrl = data.url;
+    }
+  }
+
   async function archiveClient() {
     archiveError = '';
     archiving = true;
@@ -423,6 +450,74 @@
           {/if}
         </div>
       </div>
+
+      <!-- Billing -->
+      <section class="billing-section">
+        <div class="section-header">
+          <h2>Billing</h2>
+          <button class="btn-outline" on:click={() => { linkFormOpen = !linkFormOpen; linkUrl = ''; linkError = ''; }}>
+            {linkFormOpen ? 'Cancel' : '+ Payment Link'}
+          </button>
+        </div>
+
+        {#if linkFormOpen}
+          <div class="link-form">
+            <div class="link-form-row">
+              <div class="link-form-field">
+                <label class="field-label">Price ID <span class="label-hint">(from Stripe)</span></label>
+                <input type="text" bind:value={linkPriceId} placeholder="price_..." />
+              </div>
+              <div class="link-form-field">
+                <label class="field-label">Product Name</label>
+                <input type="text" bind:value={linkProductName} placeholder="Monthly Coaching" />
+              </div>
+              <div class="link-form-field link-form-field--narrow">
+                <label class="field-label">Type</label>
+                <select bind:value={linkMode}>
+                  <option value="subscription">Subscription</option>
+                  <option value="payment">One-Time</option>
+                </select>
+              </div>
+            </div>
+            <div class="link-form-actions">
+              <button class="btn-primary" on:click={generateLink} disabled={!linkPriceId || linkLoading}>
+                {linkLoading ? 'Generating…' : 'Generate Link'}
+              </button>
+              {#if linkError}<span class="link-error">{linkError}</span>{/if}
+            </div>
+            {#if linkUrl}
+              <div class="link-result">
+                <span class="link-url">{linkUrl}</span>
+                <button class="btn-copy" on:click={() => navigator.clipboard.writeText(linkUrl)}>Copy</button>
+              </div>
+            {/if}
+          </div>
+        {/if}
+
+        {#if payments.length === 0}
+          <p class="empty">No payment records yet.</p>
+        {:else}
+          <div class="payment-list">
+            {#each payments as pm}
+              <div class="payment-row">
+                <div class="payment-main">
+                  <span class="payment-name">{pm.product_name || '—'}</span>
+                  <span class="payment-type">{pm.type === 'subscription' ? 'Subscription' : 'One-Time'}</span>
+                </div>
+                <div class="payment-meta">
+                  {#if pm.amount != null}
+                    <span class="payment-amount">${(pm.amount / 100).toFixed(2)}</span>
+                  {/if}
+                  {#if pm.current_period_end && pm.status === 'active'}
+                    <span class="payment-renews">renews {new Date(pm.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  {/if}
+                  <span class="payment-status {pm.status}">{pm.status}</span>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </section>
 
       <!-- Trends -->
       {#if checkins.length > 1}
@@ -1295,4 +1390,193 @@
     transition: color 0.15s;
   }
   .prev-stint-link:hover { color: var(--black); }
+
+  /* Billing */
+  .billing-section { margin-bottom: 40px; }
+
+  .billing-section .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .link-form {
+    background: var(--warm-white);
+    border: 1px solid var(--light-grey);
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .link-form-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .link-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .link-form-field--narrow { flex: 0 0 120px; }
+
+  .link-form-field input,
+  .link-form-field select {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 13px;
+    padding: 7px 10px;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 5px;
+    background: white;
+    color: var(--black);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .link-form-field input:focus,
+  .link-form-field select:focus { border-color: var(--accent); }
+
+  .label-hint {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--mid-grey);
+    margin-left: 4px;
+  }
+
+  .link-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn-primary {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--black);
+    color: var(--off-white);
+    border: none;
+    border-radius: 4px;
+    padding: 7px 18px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .link-error { font-size: 12px; color: var(--error); }
+
+  .link-result {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    background: white;
+    border: 1px solid var(--light-grey);
+    border-radius: 5px;
+    padding: 8px 12px;
+  }
+
+  .link-url {
+    font-size: 12px;
+    color: var(--mid-grey);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .btn-copy {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    color: var(--black);
+    white-space: nowrap;
+    transition: border-color 0.15s;
+  }
+  .btn-copy:hover { border-color: var(--black); }
+
+  .payment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .payment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid var(--light-grey);
+    border-radius: 6px;
+    gap: 12px;
+  }
+
+  .payment-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .payment-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+  }
+
+  .payment-type {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+  }
+
+  .payment-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .payment-amount {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--black);
+  }
+
+  .payment-renews {
+    font-size: 12px;
+    color: var(--mid-grey);
+  }
+
+  .payment-status {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+
+  .payment-status.active   { background: #d4edda; color: var(--success); }
+  .payment-status.trialing { background: #d4edda; color: var(--success); }
+  .payment-status.past_due { background: #fff3cd; color: #856404; }
+  .payment-status.canceled { background: var(--warm-white); color: var(--mid-grey); }
+  .payment-status.succeeded { background: #d4edda; color: var(--success); }
 </style>
