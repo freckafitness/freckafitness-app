@@ -736,8 +736,8 @@
           <p class="empty">No check-ins yet.</p>
         {:else}
           <div class="checkin-list">
-            {#each filteredCheckins as c}
-              <div class="checkin-card">
+            {#each filteredCheckins as c, i}
+              <div class="checkin-card" class:search-active={checkinSearch && i === searchMatchIdx}>
 
                 <!-- Card header -->
                 <button type="button" class="card-header" on:click={() => toggle(c.id)}>
@@ -1562,6 +1562,11 @@
     color: inherit;
     border-radius: 2px;
     padding: 0 1px;
+  }
+
+  .checkin-card.search-active {
+    border-color: #e8b830;
+    box-shadow: 0 0 0 2px rgba(232, 184, 48, 0.25);
   }
 
   /* Billing */
