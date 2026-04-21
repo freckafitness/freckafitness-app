@@ -7,17 +7,32 @@
   import { Chart, registerables } from 'chart.js';
   Chart.register(...registerables);
 
-  let client      = null;
-  let weightUnit  = 'kg';
-  let checkins    = [];
-  let checkinDone = false;
-  let expanded    = {};
+  let client        = null;
+  let weightUnit    = 'kg';
+  let checkins      = [];
+  let checkinDone   = false;
+  let expanded      = {};
   let checkinSearch = '';
 
   let ratingCanvas, missedCanvas, nutritionCanvas, sleepCanvas, radarCanvas;
   let charts = [];
-  let chartsOpen = false;
-  let clientColor = null;
+  let chartsOpen    = false;
+  let clientColor   = null;
+
+  let portalLoading = false;
+  let portalError   = '';
+
+  async function openPortal() {
+    portalLoading = true;
+    portalError   = '';
+    const { data, error } = await supabase.functions.invoke('create-portal-session');
+    portalLoading = false;
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      portalError = data?.error ?? error?.message ?? 'Could not open portal';
+    }
+  }
 
   // Ensures the color has enough contrast on white. If luminance > 0.5,
   // keeps the hue/saturation but darkens to 45% lightness.
@@ -289,6 +304,10 @@
 
     <div class="actions">
       <a href="/my/checkin" class="btn-primary">Submit Weekly Check-In</a>
+      <button class="btn-portal" on:click={openPortal} disabled={portalLoading}>
+        {portalLoading ? 'Opening…' : 'Manage Subscription'}
+      </button>
+      {#if portalError}<p class="portal-error">{portalError}</p>{/if}
     </div>
 
     <!-- Habit web + Trend charts -->
@@ -506,7 +525,37 @@
     margin-bottom: 24px;
   }
 
-  .actions { margin-bottom: 48px; }
+  .actions {
+    margin-bottom: 48px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn-portal {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--black);
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .btn-portal:hover:not(:disabled) { border-color: var(--black); }
+  .btn-portal:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .portal-error {
+    font-size: 12px;
+    color: var(--error);
+    width: 100%;
+    margin: 0;
+  }
 
   .btn-primary {
     display: inline-block;

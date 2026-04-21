@@ -32,6 +32,7 @@
   let productsLoading   = false;
   let selectedProductId = '';
   let selectedPriceId   = '';
+  let portalLoading     = false;
 
   // Chart canvas refs
   let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, stressCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
@@ -466,6 +467,19 @@
     }
   }
 
+  async function openPortal() {
+    portalLoading = true;
+    const { data, error } = await supabase.functions.invoke('create-portal-session', {
+      body: { client_id: client.id },
+    });
+    portalLoading = false;
+    if (data?.url) {
+      window.open(data.url, '_blank');
+    } else {
+      linkError = data?.error ?? error?.message ?? 'Could not open portal';
+    }
+  }
+
   async function archiveClient() {
     archiveError = '';
     archiving = true;
@@ -546,9 +560,16 @@
       <section class="billing-section">
         <div class="section-header">
           <h2>Billing</h2>
-          <button class="btn-outline" on:click={openLinkForm}>
-            {linkFormOpen ? 'Cancel' : '+ Payment Link'}
-          </button>
+          <div class="billing-actions">
+            {#if payments.some(p => p.stripe_customer_id)}
+              <button class="btn-outline" on:click={openPortal} disabled={portalLoading}>
+                {portalLoading ? 'Opening…' : 'Customer Portal'}
+              </button>
+            {/if}
+            <button class="btn-outline" on:click={openLinkForm}>
+              {linkFormOpen ? 'Cancel' : '+ Payment Link'}
+            </button>
+          </div>
         </div>
 
         {#if linkFormOpen}
@@ -1601,6 +1622,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .billing-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .link-form {
