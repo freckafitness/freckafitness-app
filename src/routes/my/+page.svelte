@@ -19,8 +19,9 @@
   let chartsOpen    = false;
   let clientColor   = null;
 
-  let portalLoading = false;
-  let portalError   = '';
+  let portalLoading   = false;
+  let portalError     = '';
+  let hasStripeCustomer = false;
 
   async function openPortal() {
     portalLoading = true;
@@ -77,7 +78,7 @@
     const { data: role } = await supabase.from('user_roles').select('role, client_id').single();
     if (role?.role === 'coach') { goto('/dashboard'); return; }
 
-    const [{ data: clientData }, { data: checkinData }] = await Promise.all([
+    const [{ data: clientData }, { data: checkinData }, { data: paymentData }] = await Promise.all([
       supabase.from('clients')
         .select('first_name, last_name, weight_unit, favorite_color')
         .eq('id', role.client_id)
@@ -86,11 +87,18 @@
         .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, stress_level, upcoming_disruptions, disruption_notes')
         .eq('client_id', role.client_id)
         .order('week_ending', { ascending: false }),
+      supabase.from('payments')
+        .select('stripe_customer_id')
+        .eq('client_id', role.client_id)
+        .not('stripe_customer_id', 'is', null)
+        .limit(1)
+        .maybeSingle(),
     ]);
 
-    client      = clientData;
-    weightUnit  = clientData?.weight_unit ?? 'kg';
-    checkins    = checkinData ?? [];
+    client            = clientData;
+    weightUnit        = clientData?.weight_unit ?? 'kg';
+    checkins          = checkinData ?? [];
+    hasStripeCustomer = !!paymentData?.stripe_customer_id;
     clientColor = clientData?.favorite_color ?? null;
     // Most recent expanded by default
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
@@ -304,10 +312,12 @@
 
     <div class="actions">
       <a href="/my/checkin" class="btn-primary">Submit Weekly Check-In</a>
-      <button class="btn-portal" on:click={openPortal} disabled={portalLoading}>
-        {portalLoading ? 'Opening…' : 'Manage Subscription'}
-      </button>
-      {#if portalError}<p class="portal-error">{portalError}</p>{/if}
+      {#if hasStripeCustomer}
+        <button class="btn-portal" on:click={openPortal} disabled={portalLoading}>
+          {portalLoading ? 'Opening…' : 'Manage Subscription'}
+        </button>
+        {#if portalError}<p class="portal-error">{portalError}</p>{/if}
+      {/if}
     </div>
 
     <!-- Habit web + Trend charts -->
