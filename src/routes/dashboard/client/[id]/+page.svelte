@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -432,12 +432,13 @@
   async function invokeWithError(fn: string, opts?: object) {
     const { data, error } = await supabase.functions.invoke(fn, opts);
     if (error || data?.error) {
+      console.error(`[${fn}] raw error:`, error, 'raw data:', data);
       let msg = error?.message ?? 'Unknown error';
       const ctx = (error as any)?.context;
       if (ctx) {
         try {
-          // context is either a pre-parsed object or a Response depending on supabase-js version
           const body = typeof ctx.json === 'function' ? await ctx.json() : ctx;
+          console.error(`[${fn}] context body:`, body);
           if (body?.error) msg = body.error;
         } catch { /* couldn't extract body */ }
       }
