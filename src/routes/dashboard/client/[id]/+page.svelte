@@ -437,8 +437,12 @@
     selectedPriceId   = '';
     if (linkFormOpen && stripeProducts.length === 0) {
       productsLoading = true;
-      const { data } = await supabase.functions.invoke('list-stripe-products');
-      stripeProducts  = data?.products ?? [];
+      const { data, error } = await supabase.functions.invoke('list-stripe-products');
+      if (error || data?.error) {
+        linkError = data?.error ?? error?.message ?? 'Failed to load products';
+      } else {
+        stripeProducts = data?.products ?? [];
+      }
       productsLoading = false;
     }
   }

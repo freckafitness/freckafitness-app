@@ -38,51 +38,49 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: roleData, error: roleError } = await supabaseUser.from('user_roles').select('role').single();
-    if (roleError || roleData?.role !== 'coach') {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+
+    const { data: { user } } = await supabaseUser.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
-    const { client_id, price_id, product_name, mode } = await req.json();
-    if (!client_id || !price_id) {
-      return new Response(JSON.stringify({ error: 'client_id and price_id required' }), { status: 400, headers: corsHeaders });
+    const { data: roleData } = await supabaseUser.from('user_roles').select('role, client_id').single();
+
+    let clientId: string;
+    let returnUrl: string;
+
+    if (roleData?.role === 'coach') {
+      const body = await req.json().catch(() => ({}));
+      clientId = body.client_id;
+      if (!clientId) {
+        return new Response(JSON.stringify({ error: 'client_id required' }), { status: 400, headers: corsHeaders });
+      }
+      returnUrl = `https://app.freckafitness.com/dashboard/client/${clientId}`;
+    } else {
+      clientId = roleData?.client_id;
+      if (!clientId) {
+        return new Response(JSON.stringify({ error: 'No client record found' }), { status: 403, headers: corsHeaders });
+      }
+      returnUrl = 'https://app.freckafitness.com/my';
     }
 
-    const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
-
-    const { data: client } = await supabaseAdmin
-      .from('clients')
-      .select('id, first_name, last_name, email')
-      .eq('id', client_id)
-      .single();
-
-    const { data: existingPayment } = await supabaseAdmin
+    const { data: paymentData } = await supabaseAdmin
       .from('payments')
       .select('stripe_customer_id')
-      .eq('client_id', client_id)
+      .eq('client_id', clientId)
       .not('stripe_customer_id', 'is', null)
       .limit(1)
       .maybeSingle();
 
-    let customerId = existingPayment?.stripe_customer_id;
-    if (!customerId) {
-      const customer = await stripePost('customers', stripeKey, {
-        name:                           `${client.first_name} ${client.last_name}`,
-        email:                          client.email ?? '',
-        'metadata[supabase_client_id]': client_id,
-      });
-      customerId = customer.id;
+    if (!paymentData?.stripe_customer_id) {
+      return new Response(JSON.stringify({ error: 'No Stripe customer found for this client' }), { status: 404, headers: corsHeaders });
     }
 
-    const session = await stripePost('checkout/sessions', stripeKey, {
-      customer:                  customerId,
-      'line_items[0][price]':    price_id,
-      'line_items[0][quantity]': '1',
-      mode:                      mode ?? 'subscription',
-      success_url:               'https://app.freckafitness.com/dashboard',
-      cancel_url:                'https://app.freckafitness.com/dashboard',
-      'metadata[client_id]':     client_id,
-      'metadata[product_name]':  product_name ?? '',
+    const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
+
+    const session = await stripePost('billing_portal/sessions', stripeKey, {
+      customer:   paymentData.stripe_customer_id,
+      return_url: returnUrl,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

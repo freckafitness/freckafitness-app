@@ -1,10 +1,20 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@14?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+async function stripeGet(path: string, key: string) {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message ?? `Stripe error ${res.status}`);
+  }
+  return res.json();
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -31,18 +41,19 @@ Deno.serve(async (req) => {
     }
 
     const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
-    const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
 
-    const products = await stripe.products.list({ active: true, limit: 100 });
-    const prices   = await stripe.prices.list({ active: true, limit: 100 });
+    const [productsRes, pricesRes] = await Promise.all([
+      stripeGet('products?active=true&limit=100', stripeKey),
+      stripeGet('prices?active=true&limit=100', stripeKey),
+    ]);
 
-    const result = products.data
-      .map(product => ({
-        id:       product.id,
-        name:     product.name,
-        prices:   prices.data
-          .filter(p => p.product === product.id)
-          .map(p => ({
+    const result = productsRes.data
+      .map((product: any) => ({
+        id:     product.id,
+        name:   product.name,
+        prices: pricesRes.data
+          .filter((p: any) => p.product === product.id)
+          .map((p: any) => ({
             id:       p.id,
             amount:   p.unit_amount,
             currency: p.currency,
@@ -50,7 +61,7 @@ Deno.serve(async (req) => {
             mode:     p.recurring ? 'subscription' : 'payment',
           })),
       }))
-      .filter(p => p.prices.length > 0);
+      .filter((p: any) => p.prices.length > 0);
 
     return new Response(JSON.stringify({ products: result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
