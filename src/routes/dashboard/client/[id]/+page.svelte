@@ -429,6 +429,22 @@
     return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
 
+  async function invokeWithError(fn: string, opts?: object) {
+    const { data, error } = await supabase.functions.invoke(fn, opts);
+    if (error) {
+      let msg = error.message ?? 'Unknown error';
+      try {
+        const body = await (error as any).context?.json?.();
+        if (body?.error) msg = body.error;
+      } catch {}
+      // Fallback: data may contain error body even on non-2xx
+      if (data?.error) msg = data.error;
+      return { data: null, errMsg: `[${fn}] ${msg}` };
+    }
+    if (data?.error) return { data: null, errMsg: `[${fn}] ${data.error}` };
+    return { data, errMsg: null };
+  }
+
   async function openLinkForm() {
     linkFormOpen      = !linkFormOpen;
     linkUrl           = '';
@@ -437,11 +453,12 @@
     selectedPriceId   = '';
     if (linkFormOpen && stripeProducts.length === 0) {
       productsLoading = true;
-      const { data, error } = await supabase.functions.invoke('list-stripe-products');
-      if (error || data?.error) {
-        linkError = data?.error ?? error?.message ?? 'Failed to load products';
+      const { data, errMsg } = await invokeWithError('list-stripe-products');
+      if (errMsg) {
+        linkError = errMsg;
       } else {
         stripeProducts = data?.products ?? [];
+        if (stripeProducts.length === 0) linkError = 'No active products found in Stripe.';
       }
       productsLoading = false;
     }
@@ -460,12 +477,12 @@
     linkLoading = true;
     linkUrl     = '';
     linkError   = '';
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    const { data, errMsg } = await invokeWithError('create-checkout-session', {
       body: { client_id: client.id, price_id: selectedPriceId, product_name: linkProductName, mode: linkMode },
     });
     linkLoading = false;
-    if (error || !data?.url) {
-      linkError = data?.error ?? error?.message ?? 'Failed to generate link';
+    if (errMsg || !data?.url) {
+      linkError = errMsg ?? 'Failed to generate link';
     } else {
       linkUrl = data.url;
     }
@@ -473,14 +490,15 @@
 
   async function openPortal() {
     portalLoading = true;
-    const { data, error } = await supabase.functions.invoke('create-portal-session', {
+    linkError     = '';
+    const { data, errMsg } = await invokeWithError('create-portal-session', {
       body: { client_id: client.id },
     });
     portalLoading = false;
     if (data?.url) {
       window.open(data.url, '_blank');
     } else {
-      linkError = data?.error ?? error?.message ?? 'Could not open portal';
+      linkError = errMsg ?? 'Could not open portal';
     }
   }
 
@@ -576,11 +594,18 @@
           </div>
         </div>
 
+        {#if linkError}
+          <div class="billing-error">
+            <span class="billing-error-msg">{linkError}</span>
+            <button class="billing-error-dismiss" on:click={() => linkError = ''}>✕</button>
+          </div>
+        {/if}
+
         {#if linkFormOpen}
           <div class="link-form">
             {#if productsLoading}
               <p class="products-loading">Loading products…</p>
-            {:else if stripeProducts.length === 0}
+            {:else if stripeProducts.length === 0 && !linkError}
               <p class="products-loading">No active products found in Stripe.</p>
             {:else}
               <div class="link-form-row">
@@ -613,7 +638,6 @@
                 <button class="btn-primary" on:click={generateLink} disabled={!selectedPriceId || linkLoading}>
                   {linkLoading ? 'Generating…' : 'Generate Link'}
                 </button>
-                {#if linkError}<span class="link-error">{linkError}</span>{/if}
               </div>
             {/if}
             {#if linkUrl}
@@ -1621,6 +1645,38 @@
 
   /* Billing */
   .billing-section { margin-bottom: 40px; }
+
+  .billing-error {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    background: #fff2f2;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+
+  .billing-error-msg {
+    font-size: 13px;
+    color: var(--error);
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  .billing-error-dismiss {
+    background: none;
+    border: none;
+    font-size: 14px;
+    color: var(--mid-grey);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .billing-error-dismiss:hover { color: var(--error); }
 
   .billing-section .section-header {
     display: flex;
