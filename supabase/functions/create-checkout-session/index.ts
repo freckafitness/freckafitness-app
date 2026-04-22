@@ -48,13 +48,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'client_id and price_id required' }), { status: 400, headers: corsHeaders });
     }
 
-    const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
+    const { data: stripeKey, error: vaultError } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
+    if (vaultError || !stripeKey) {
+      return new Response(JSON.stringify({ error: `Vault error: ${vaultError?.message ?? 'empty key'}` }), { status: 500, headers: corsHeaders });
+    }
 
-    const { data: client } = await supabaseAdmin
+    const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('id, first_name, last_name, email')
       .eq('id', client_id)
       .single();
+
+    if (clientError || !client) {
+      return new Response(JSON.stringify({ error: `Client not found: ${clientError?.message ?? client_id}` }), { status: 404, headers: corsHeaders });
+    }
 
     const { data: existingPayment } = await supabaseAdmin
       .from('payments')
