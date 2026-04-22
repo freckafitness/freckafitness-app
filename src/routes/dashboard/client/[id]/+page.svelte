@@ -431,17 +431,10 @@
 
   async function invokeWithError(fn: string, opts?: object) {
     const { data, error } = await supabase.functions.invoke(fn, opts);
-    if (error) {
-      let msg = error.message ?? 'Unknown error';
-      try {
-        const body = await (error as any).context?.json?.();
-        if (body?.error) msg = body.error;
-      } catch {}
-      // Fallback: data may contain error body even on non-2xx
-      if (data?.error) msg = data.error;
-      return { data: null, errMsg: `[${fn}] ${msg}` };
-    }
-    if (data?.error) return { data: null, errMsg: `[${fn}] ${data.error}` };
+    // Supabase functions-js parses the JSON body into error.context on non-2xx
+    const ctxErr = (error as any)?.context?.error;
+    const msg = ctxErr ?? data?.error ?? error?.message ?? 'Unknown error';
+    if (error || data?.error) return { data: null, errMsg: `[${fn}] ${msg}` };
     return { data, errMsg: null };
   }
 
