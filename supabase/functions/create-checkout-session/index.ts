@@ -43,12 +43,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
 
-    const { client_id, price_id, product_name, mode } = await req.json();
+    const { client_id, price_id, product_name, mode, test_mode } = await req.json();
     if (!client_id || !price_id) {
       return new Response(JSON.stringify({ error: 'client_id and price_id required' }), { status: 400, headers: corsHeaders });
     }
 
-    const { data: stripeKey, error: vaultError } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
+    const { data: stripeKey, error: vaultError } = await supabaseAdmin.rpc('get_vault_secret', {
+      secret_name: test_mode === true ? 'stripe_secret_key_test' : 'stripe_secret_key',
+    });
     if (vaultError || !stripeKey) {
       return new Response(JSON.stringify({ error: `Vault error: ${vaultError?.message ?? 'empty key'}` }), { status: 500, headers: corsHeaders });
     }

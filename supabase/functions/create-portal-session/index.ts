@@ -49,9 +49,11 @@ Deno.serve(async (req) => {
     let clientId: string;
     let returnUrl: string;
 
+    let testMode = false;
     if (roleData?.role === 'coach') {
       const body = await req.json().catch(() => ({}));
       clientId = body.client_id;
+      testMode = body.test_mode === true;
       if (!clientId) {
         return new Response(JSON.stringify({ error: 'client_id required' }), { status: 400, headers: corsHeaders });
       }
@@ -76,7 +78,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No Stripe customer found for this client' }), { status: 404, headers: corsHeaders });
     }
 
-    const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
+    const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', {
+      secret_name: testMode ? 'stripe_secret_key_test' : 'stripe_secret_key',
+    });
 
     const session = await stripePost('billing_portal/sessions', stripeKey, {
       customer:   paymentData.stripe_customer_id,

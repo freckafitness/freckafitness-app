@@ -40,7 +40,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
 
-    const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_secret_key' });
+    const body = await req.json().catch(() => ({}));
+    const testMode = body.test_mode === true;
+    const { data: stripeKey } = await supabaseAdmin.rpc('get_vault_secret', {
+      secret_name: testMode ? 'stripe_secret_key_test' : 'stripe_secret_key',
+    });
 
     const [productsRes, pricesRes] = await Promise.all([
       stripeGet('products?active=true&limit=100', stripeKey),

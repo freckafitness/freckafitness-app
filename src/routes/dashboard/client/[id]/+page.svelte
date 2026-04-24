@@ -33,6 +33,7 @@
   let selectedProductId = '';
   let selectedPriceId   = '';
   let portalLoading     = false;
+  let testMode          = false;
 
   // Chart canvas refs
   let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, stressCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
@@ -275,6 +276,7 @@
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
     displayUnit = c?.weight_unit ?? 'kg';
 
+    testMode = localStorage.getItem('stripe_test_mode') === 'true';
     loading = false;
 
     // Charts need the DOM — wait a tick
@@ -448,6 +450,16 @@
     return { data, errMsg: null };
   }
 
+  function toggleTestMode() {
+    testMode = !testMode;
+    localStorage.setItem('stripe_test_mode', String(testMode));
+    stripeProducts    = [];
+    selectedProductId = '';
+    selectedPriceId   = '';
+    linkUrl           = '';
+    linkError         = '';
+  }
+
   async function openLinkForm() {
     linkFormOpen      = !linkFormOpen;
     linkUrl           = '';
@@ -456,7 +468,7 @@
     selectedPriceId   = '';
     if (linkFormOpen && stripeProducts.length === 0) {
       productsLoading = true;
-      const { data, errMsg } = await invokeWithError('list-stripe-products');
+      const { data, errMsg } = await invokeWithError('list-stripe-products', { body: { test_mode: testMode } });
       if (errMsg) {
         linkError = errMsg;
       } else {
@@ -481,7 +493,7 @@
     linkUrl     = '';
     linkError   = '';
     const { data, errMsg } = await invokeWithError('create-checkout-session', {
-      body: { client_id: client.id, price_id: selectedPriceId, product_name: linkProductName, mode: linkMode },
+      body: { client_id: client.id, price_id: selectedPriceId, product_name: linkProductName, mode: linkMode, test_mode: testMode },
     });
     linkLoading = false;
     if (errMsg || !data?.url) {
@@ -495,7 +507,7 @@
     portalLoading = true;
     linkError     = '';
     const { data, errMsg } = await invokeWithError('create-portal-session', {
-      body: { client_id: client.id },
+      body: { client_id: client.id, test_mode: testMode },
     });
     portalLoading = false;
     if (data?.url) {
@@ -584,8 +596,14 @@
       <!-- Billing -->
       <section class="billing-section">
         <div class="section-header">
-          <h2>Billing</h2>
+          <div class="billing-title-row">
+            <h2>Billing</h2>
+            {#if testMode}<span class="test-mode-badge">Test Mode</span>{/if}
+          </div>
           <div class="billing-actions">
+            <button class="btn-test-mode" class:active={testMode} on:click={toggleTestMode}>
+              {testMode ? 'Exit Test Mode' : 'Test Mode'}
+            </button>
             {#if payments.some(p => p.stripe_customer_id)}
               <button class="btn-outline" on:click={openPortal} disabled={portalLoading}>
                 {portalLoading ? 'Opening…' : 'Customer Portal'}
@@ -1648,6 +1666,40 @@
 
   /* Billing */
   .billing-section { margin-bottom: 40px; }
+
+  .billing-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .test-mode-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: #dc3545;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .btn-test-mode {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: none;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 5px 12px;
+    color: var(--mid-grey);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-test-mode:hover { border-color: #dc3545; color: #dc3545; }
+  .btn-test-mode.active { background: #dc3545; border-color: #dc3545; color: white; }
 
   .billing-error {
     display: flex;

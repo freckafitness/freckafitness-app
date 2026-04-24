@@ -32,7 +32,11 @@ Deno.serve(async (req) => {
   try {
     const { data: webhookSecret } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_webhook_secret' });
 
-    const valid = await verifyStripeSignature(body, sig, webhookSecret);
+    let valid = await verifyStripeSignature(body, sig, webhookSecret);
+    if (!valid) {
+      const { data: testSecret } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_webhook_secret_test' });
+      valid = await verifyStripeSignature(body, sig, testSecret);
+    }
     if (!valid) return new Response('Invalid signature', { status: 400 });
 
     const event = JSON.parse(body);
