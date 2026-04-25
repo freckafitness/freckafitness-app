@@ -90,6 +90,7 @@
       supabase.from('payments')
         .select('stripe_customer_id')
         .eq('client_id', role.client_id)
+        .eq('test_mode', false)
         .not('stripe_customer_id', 'is', null)
         .limit(1)
         .maybeSingle(),

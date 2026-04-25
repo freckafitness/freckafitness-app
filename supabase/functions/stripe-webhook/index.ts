@@ -33,9 +33,11 @@ Deno.serve(async (req) => {
     const { data: webhookSecret } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_webhook_secret' });
 
     let valid = await verifyStripeSignature(body, sig, webhookSecret);
+    let testMode = false;
     if (!valid) {
       const { data: testSecret } = await supabaseAdmin.rpc('get_vault_secret', { secret_name: 'stripe_webhook_secret_test' });
       valid = await verifyStripeSignature(body, sig, testSecret);
+      if (valid) testMode = true;
     }
     if (!valid) return new Response('Invalid signature', { status: 400 });
 
@@ -57,6 +59,7 @@ Deno.serve(async (req) => {
             product_name:           session.metadata?.product_name ?? null,
             amount:                 session.amount_total,
             currency:               session.currency,
+            test_mode:              testMode,
           });
         } else {
           await supabaseAdmin.from('payments').insert({
@@ -68,6 +71,7 @@ Deno.serve(async (req) => {
             product_name:               session.metadata?.product_name ?? null,
             amount:                     session.amount_total,
             currency:                   session.currency,
+            test_mode:                  testMode,
           });
         }
         break;
