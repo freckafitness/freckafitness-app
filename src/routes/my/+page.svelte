@@ -24,21 +24,6 @@
   let hasStripeCustomer = false;
   let funFact = '';
 
-  const FACTS = [
-    'The word "gymnasium" comes from the ancient Greek gymnazein — "to exercise naked." Early Greek athletes trained unclothed to allow unrestricted movement and to display physical development.',
-    'Periodization — deliberately cycling training intensity and volume — was formalized by Soviet sports scientist Leo Matveyev in the 1960s. It became the foundation of nearly every serious athletic training system in use today.',
-    'Modern progressive resistance training owes much to Dr. Thomas DeLorme, a U.S. Army physician who developed the method to rehabilitate injured soldiers in the 1940s. His protocols are still taught in physical therapy programs worldwide.',
-    'The first recorded competitive weightlifting event took place in Germany in 1891. Athletes contested the one-arm press, one-arm snatch, and two-arm clean and jerk — three movements still at the core of the sport over a century later.',
-    'The terms "reps" and "sets" as discrete training units were standardized in English-language manuals in the 1940s. Before that, instructions typically read: "lift X lbs as many times as possible."',
-    'The late 19th and early 20th century physical culture movement — led by figures like Eugen Sandow and Dudley Sargent — was the first organized effort to bring structured exercise to a general public audience. Before that, systematic physical training was largely confined to military preparation and competitive athletics.',
-    'The Olympic Games were revived in 1896 in Athens after a gap of over 1,500 years. The first modern games drew 241 athletes from 14 nations — a scale that contrasts sharply with the thousands of athletes from hundreds of countries that participate today.',
-    'The SAID principle — Specific Adaptation to Imposed Demands — describes the body\'s tendency to adapt specifically to the type of stress it receives. The principle was formalized in exercise physiology literature in the 1960s and 70s, though its practical implications were understood empirically by coaches and athletes centuries earlier.',
-    'The legend of Milo of Croton — an ancient Greek wrestler who built his strength by carrying a calf daily as it grew into a bull — is one of the earliest recorded illustrations of progressive overload. Whether historical or apocryphal, the story has been used to explain the overload principle for over two thousand years.',
-    'The concept of the one-rep max — the maximum weight an athlete can lift for a single repetition — was standardized in powerlifting competition in the 1960s. Before formal powerlifting, strength was typically measured through fixed-weight challenges or repetition tests rather than a true maximum single effort.',
-    'The International Olympic Committee added women\'s weightlifting to the Olympic program in 2000 at the Sydney Games. Women had been competing in international weightlifting championships since 1987 — a relatively short time in the context of the sport\'s overall history.',
-    'The concept of muscle fiber types — distinguishing between fast-twitch and slow-twitch fibers and their different responses to training — was characterized in exercise physiology research in the 1960s and 70s. The framework became foundational for how coaches thought about training specificity and individual variation in response to strength and endurance work.',
-  ];
-
   async function openPortal() {
     portalLoading = true;
     portalError   = '';
@@ -121,7 +106,12 @@
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
 
     checkinDone = $page.url.searchParams.get('checkin') === 'done';
-    if (checkinDone) funFact = FACTS[Math.floor(Math.random() * FACTS.length)];
+    if (checkinDone) {
+      try {
+        funFact = sessionStorage.getItem('ff_portal_fact') || '';
+        sessionStorage.removeItem('ff_portal_fact');
+      } catch (e) {}
+    }
 
     if (checkins.length >= 1) {
       await new Promise(r => setTimeout(r, 0));
