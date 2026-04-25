@@ -604,7 +604,7 @@
             <button class="btn-test-mode" class:active={testMode} on:click={toggleTestMode}>
               {testMode ? 'Exit Test Mode' : 'Test Mode'}
             </button>
-            {#if payments.some(p => p.stripe_customer_id)}
+            {#if payments.some(p => p.stripe_customer_id && !p.test_mode)}
               <button class="btn-outline" on:click={openPortal} disabled={portalLoading}>
                 {portalLoading ? 'Opening…' : 'Customer Portal'}
               </button>
@@ -679,6 +679,7 @@
                 <div class="payment-main">
                   <span class="payment-name">{pm.product_name || '—'}</span>
                   <span class="payment-type">{pm.type === 'subscription' ? 'Subscription' : 'One-Time'}</span>
+                  {#if pm.test_mode}<span class="payment-test-badge">Test</span>{/if}
                 </div>
                 <div class="payment-meta">
                   {#if pm.amount != null}
@@ -1928,4 +1929,15 @@
   .payment-status.past_due { background: #fff3cd; color: #856404; }
   .payment-status.canceled { background: var(--warm-white); color: var(--mid-grey); }
   .payment-status.succeeded { background: #d4edda; color: var(--success); }
+
+  .payment-test-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: #dc3545;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 20px;
+  }
 </style>
