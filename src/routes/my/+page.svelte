@@ -325,7 +325,7 @@
     {#if checkinDone}
       <div class="success-banner">
         Check-in submitted — I'll review and respond before next week.
-        {#if funFact}<p class="success-fact">{funFact}</p>{/if}
+        <p class="success-fact">{funFact}</p>
       </div>
     {/if}
 
