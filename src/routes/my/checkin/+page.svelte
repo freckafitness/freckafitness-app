@@ -3,7 +3,6 @@
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase.js';
   import Header from '$lib/Header.svelte';
-  import { getFactForPayload } from '$lib/facts.js';
 
   let clientId = null;
   let weekEnding = '';
@@ -132,16 +131,6 @@
       return;
     }
 
-    try {
-      sessionStorage.setItem('ff_portal_fact', getFactForPayload({
-        best_lift:        bestLift,
-        program_feedback: programFeedback,
-        missed_reason:    missedReason,
-        for_ryan:         forRyan,
-        soreness_notes:   sorenessNotes,
-        nutrition_notes:  nutritionNotes,
-      }));
-    } catch (e) {}
     goto('/my?checkin=done');
   }
 </script>

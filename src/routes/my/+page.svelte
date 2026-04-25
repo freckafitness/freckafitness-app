@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import { supabase } from '$lib/supabase.js';
   import Header from '$lib/Header.svelte';
+  import { getFactForPayload } from '$lib/facts.js';
   import { Chart, registerables } from 'chart.js';
   Chart.register(...registerables);
 
@@ -106,11 +107,8 @@
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
 
     checkinDone = $page.url.searchParams.get('checkin') === 'done';
-    if (checkinDone) {
-      try {
-        funFact = sessionStorage.getItem('ff_portal_fact') || '';
-        sessionStorage.removeItem('ff_portal_fact');
-      } catch (e) {}
+    if (checkinDone && checkins.length > 0) {
+      funFact = getFactForPayload(checkins[0]);
     }
 
     if (checkins.length >= 1) {
