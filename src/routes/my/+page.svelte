@@ -5,6 +5,7 @@
   import { supabase } from '$lib/supabase.js';
   import Header from '$lib/Header.svelte';
   import { getFactForPayload } from '$lib/facts.js';
+  import { getNextAnimalFact } from '$lib/animal-facts.js';
   import { Chart, registerables } from 'chart.js';
   Chart.register(...registerables);
 
@@ -24,6 +25,7 @@
   let portalError     = '';
   let hasStripeCustomer = false;
   let funFact = '';
+  let animalFact = '';
 
   async function openPortal() {
     portalLoading = true;
@@ -109,6 +111,8 @@
     checkinDone = $page.url.searchParams.get('checkin') === 'done';
     if (checkinDone && checkins.length > 0) {
       funFact = getFactForPayload(checkins[0]);
+    } else {
+      animalFact = getNextAnimalFact();
     }
 
     if (checkins.length >= 1) {
@@ -508,6 +512,13 @@
       </section>
     {/if}
 
+    {#if animalFact}
+      <div class="animal-strip">
+        <span class="animal-label">Did you know?</span>
+        <p class="animal-text">{animalFact}</p>
+      </div>
+    {/if}
+
   </main>
 </div>
 
@@ -896,5 +907,27 @@
     color: var(--black);
     line-height: 1.6;
     white-space: pre-wrap;
+  }
+
+  .animal-strip {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--light-grey);
+  }
+
+  .animal-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+  }
+
+  .animal-text {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--mid-grey);
+    line-height: 1.6;
+    max-width: 560px;
   }
 </style>
