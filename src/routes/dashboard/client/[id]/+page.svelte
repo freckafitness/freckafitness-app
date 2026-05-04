@@ -168,7 +168,7 @@
     return [
       c.week_ending, c.progress_trend, c.best_lift,
       c.program_feedback, c.soreness_notes, c.nutrition_notes,
-      c.disruption_notes, c.for_ryan, c.coach_notes,
+      c.disruption_notes, c.for_ryan, c.weekly_curiosity, c.coach_notes,
     ].filter(Boolean).join(' ').toLowerCase();
   }
 
@@ -404,6 +404,12 @@
     }
   }
 
+  async function toggleWeeklyCuriosity() {
+    const next = !client.show_weekly_curiosity;
+    client = { ...client, show_weekly_curiosity: next };
+    await supabase.from('clients').update({ show_weekly_curiosity: next }).eq('id', client.id);
+  }
+
   async function saveNotes(checkinId) {
     notesState[checkinId].saving = true;
     notesState[checkinId].saved  = false;
@@ -555,6 +561,10 @@
             <button class="bw-toggle" class:on={client.show_bodyweight} on:click={toggleBodyweight}>
               <span class="bw-toggle-track" class:on={client.show_bodyweight}><span class="bw-toggle-thumb"></span></span>
               Track body weight
+            </button>
+            <button class="bw-toggle" class:on={client.show_weekly_curiosity} on:click={toggleWeeklyCuriosity}>
+              <span class="bw-toggle-track" class:on={client.show_weekly_curiosity}><span class="bw-toggle-thumb"></span></span>
+              Weekly Curiosity
             </button>
           {/if}
           {#if intake}
@@ -914,6 +924,12 @@
                     <div class="card-field card-field--full for-ryan">
                       <p class="field-label">For Me</p>
                       <p class="field-value">{@html highlight(c.for_ryan, checkinSearch)}</p>
+                    </div>
+                  {/if}
+                  {#if c.weekly_curiosity}
+                    <div class="card-field card-field--full curiosity">
+                      <p class="field-label">Weekly Curiosity</p>
+                      <p class="field-value">{@html highlight(c.weekly_curiosity, checkinSearch)}</p>
                     </div>
                   {/if}
                 </div>
@@ -1427,6 +1443,17 @@
     margin-top: 4px;
     grid-column: 1 / -1;
   }
+
+  .curiosity {
+    background: #eef4ff;
+    border: 1px solid rgba(104, 136, 232, 0.2);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 4px;
+    grid-column: 1 / -1;
+  }
+
+  .curiosity .field-label { color: #6888E8; }
 
   .field-label {
     font-size: 10px;

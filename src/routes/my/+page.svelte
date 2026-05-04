@@ -88,7 +88,7 @@
         .eq('id', role.client_id)
         .single(),
       supabase.from('checkins')
-        .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, stress_level, upcoming_disruptions, disruption_notes')
+        .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, weekly_curiosity, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, stress_level, upcoming_disruptions, disruption_notes')
         .eq('client_id', role.client_id)
         .order('week_ending', { ascending: false }),
       supabase.from('payments')
@@ -495,6 +495,12 @@
                     <p class="field-value">{@html highlight(c.for_ryan, checkinSearch)}</p>
                   </div>
                 {/if}
+                {#if c.weekly_curiosity}
+                  <div class="card-field card-field--full curiosity">
+                    <p class="field-label">Weekly Curiosity</p>
+                    <p class="field-value">{@html highlight(c.weekly_curiosity, checkinSearch)}</p>
+                  </div>
+                {/if}
               </div>
 
               <!-- Coach notes -->
@@ -882,6 +888,17 @@
     background: var(--warm-white); border-radius: 4px;
     padding: 8px 10px; margin-top: 4px; grid-column: 1 / -1;
   }
+
+  .curiosity {
+    background: #eef4ff;
+    border: 1px solid rgba(104, 136, 232, 0.2);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 4px;
+    grid-column: 1 / -1;
+  }
+
+  .curiosity .field-label { color: #6888E8; }
 
   .field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mid-grey); margin-bottom: 3px; }
   .field-value { font-size: 14px; color: var(--black); line-height: 1.5; white-space: pre-wrap; }

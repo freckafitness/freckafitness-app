@@ -24,6 +24,8 @@
   let showBodyweight = false;
   let bodyweight = '';
   let weightUnit = 'kg';
+  let showWeeklyCuriosity = false;
+  let weeklyCuriosity = '';
   let nutritionAdherence = 6;
   let nutritionNotes = '';
   let upcomingDisruptions = false;
@@ -73,11 +75,12 @@
 
     if (!isPreview) {
       const [{ data: clientRow }, { data: existing }] = await Promise.all([
-        supabase.from('clients').select('show_bodyweight, weight_unit').eq('id', role.client_id).single(),
+        supabase.from('clients').select('show_bodyweight, weight_unit, show_weekly_curiosity').eq('id', role.client_id).single(),
         supabase.from('checkins').select('id').eq('client_id', clientId).eq('week_ending', weekEnding).limit(1),
       ]);
-      showBodyweight   = clientRow?.show_bodyweight ?? false;
-      weightUnit       = clientRow?.weight_unit ?? 'kg';
+      showBodyweight        = clientRow?.show_bodyweight ?? false;
+      weightUnit            = clientRow?.weight_unit ?? 'kg';
+      showWeeklyCuriosity   = clientRow?.show_weekly_curiosity ?? false;
       alreadySubmitted = (existing?.length ?? 0) > 0;
     }
   });
@@ -98,8 +101,9 @@
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!progressTrend) { error = 'Please select how performance felt this week.'; return; }
-    if (!soreness)      { error = 'Please select a soreness level.'; return; }
+    if (!progressTrend)                             { error = 'Please select how performance felt this week.'; return; }
+    if (!soreness)                                  { error = 'Please select a soreness level.'; return; }
+    if (showWeeklyCuriosity && !weeklyCuriosity.trim()) { error = 'Please enter your Weekly Curiosity question.'; return; }
     error = '';
     loading = true;
 
@@ -123,6 +127,7 @@
       disruption_notes:     upcomingDisruptions ? (disruptionNotes || null) : null,
       for_ryan:             forRyan,
       week_rating:          weekRating,
+      weekly_curiosity:     showWeeklyCuriosity ? (weeklyCuriosity.trim() || null) : null,
     });
 
     if (insertError) {
@@ -356,6 +361,19 @@
           </div>
         </div>
       </div>
+
+      <!-- 05 Weekly Curiosity (conditional) -->
+      {#if showWeeklyCuriosity}
+      <div class="form-section">
+        <div class="section-label"><span>05</span> Weekly Curiosity</div>
+        <div class="field">
+          <label for="weeklyCuriosity">Ask me anything about your training, recovery, or process <span class="req">*</span></label>
+          <textarea id="weeklyCuriosity" bind:value={weeklyCuriosity}
+            placeholder="Technique questions, programming logic, why we're doing X, nutrition rationale, anything you've been curious about…"
+            style="min-height:96px;" required></textarea>
+        </div>
+      </div>
+      {/if}
 
       {#if error}
         <p class="error">{error}</p>
