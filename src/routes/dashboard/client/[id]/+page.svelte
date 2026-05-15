@@ -22,6 +22,11 @@
 
   // Billing
   let payments          = [];
+  let stripeIdInput     = '';
+  let stripeIdEditing   = false;
+  let stripeIdSaving    = false;
+  let stripeIdSaved     = false;
+  let stripeIdError     = '';
   let linkFormOpen      = false;
   let linkProductName   = '';
   let linkMode          = 'subscription';
@@ -466,6 +471,20 @@
     linkError         = '';
   }
 
+  async function saveStripeId() {
+    const id = stripeIdInput.trim();
+    if (!id.startsWith('cus_')) { stripeIdError = 'Must start with cus_'; return; }
+    stripeIdSaving = true;
+    stripeIdError  = '';
+    const { error } = await supabase.from('clients').update({ stripe_customer_id: id }).eq('id', client.id);
+    stripeIdSaving = false;
+    if (error) { stripeIdError = error.message; return; }
+    client         = { ...client, stripe_customer_id: id };
+    stripeIdEditing = false;
+    stripeIdSaved  = true;
+    setTimeout(() => stripeIdSaved = false, 2500);
+  }
+
   async function openLinkForm() {
     linkFormOpen      = !linkFormOpen;
     linkUrl           = '';
@@ -614,7 +633,7 @@
             <button class="btn-test-mode" class:active={testMode} on:click={toggleTestMode}>
               {testMode ? 'Exit Test Mode' : 'Test Mode'}
             </button>
-            {#if payments.some(p => p.stripe_customer_id && !p.test_mode)}
+            {#if client.stripe_customer_id || payments.some(p => p.stripe_customer_id && !p.test_mode)}
               <button class="btn-outline" on:click={openPortal} disabled={portalLoading}>
                 {portalLoading ? 'Opening…' : 'Customer Portal'}
               </button>
@@ -623,6 +642,26 @@
               {linkFormOpen ? 'Cancel' : '+ Payment Link'}
             </button>
           </div>
+        </div>
+
+        <!-- Stripe Customer ID link -->
+        <div class="stripe-id-row">
+          <span class="stripe-id-label">Stripe Customer ID</span>
+          {#if client.stripe_customer_id && !stripeIdEditing}
+            <span class="stripe-id-value">{client.stripe_customer_id}</span>
+            {#if stripeIdSaved}<span class="stripe-id-saved">Saved</span>{/if}
+            <button class="stripe-id-edit" on:click={() => { stripeIdInput = client.stripe_customer_id; stripeIdEditing = true; }}>Edit</button>
+          {:else}
+            <input class="stripe-id-input" type="text" bind:value={stripeIdInput}
+              placeholder="cus_…" on:keydown={e => e.key === 'Enter' && saveStripeId()} />
+            <button class="btn-primary" on:click={saveStripeId} disabled={stripeIdSaving}>
+              {stripeIdSaving ? 'Saving…' : 'Link'}
+            </button>
+            {#if stripeIdEditing}
+              <button class="btn-cancel-inline" on:click={() => stripeIdEditing = false}>Cancel</button>
+            {/if}
+            {#if stripeIdError}<span class="stripe-id-error">{stripeIdError}</span>{/if}
+          {/if}
         </div>
 
         {#if linkError}
@@ -1694,6 +1733,85 @@
 
   /* Billing */
   .billing-section { margin-bottom: 40px; }
+
+  .stripe-id-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0 14px;
+    flex-wrap: wrap;
+  }
+
+  .stripe-id-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    white-space: nowrap;
+  }
+
+  .stripe-id-value {
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    color: var(--black);
+  }
+
+  .stripe-id-saved {
+    font-size: 12px;
+    color: var(--success);
+  }
+
+  .stripe-id-edit {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 3px 10px;
+    color: var(--mid-grey);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .stripe-id-edit:hover { border-color: var(--black); color: var(--black); }
+
+  .stripe-id-input {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 5px;
+    background: white;
+    color: var(--black);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s;
+  }
+  .stripe-id-input:focus { border-color: var(--accent); }
+
+  .stripe-id-error {
+    font-size: 12px;
+    color: var(--error);
+  }
+
+  .btn-cancel-inline {
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: var(--mid-grey);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-cancel-inline:hover { border-color: var(--black); color: var(--black); }
 
   .billing-title-row {
     display: flex;

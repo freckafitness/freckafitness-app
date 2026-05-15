@@ -74,7 +74,18 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    if (!paymentData?.stripe_customer_id) {
+    let stripeCustomerId = paymentData?.stripe_customer_id ?? null;
+
+    if (!stripeCustomerId) {
+      const { data: clientData } = await supabaseAdmin
+        .from('clients')
+        .select('stripe_customer_id')
+        .eq('id', clientId)
+        .single();
+      stripeCustomerId = clientData?.stripe_customer_id ?? null;
+    }
+
+    if (!stripeCustomerId) {
       return new Response(JSON.stringify({ error: 'No Stripe customer found for this client' }), { status: 404, headers: corsHeaders });
     }
 
@@ -83,7 +94,7 @@ Deno.serve(async (req) => {
     });
 
     const session = await stripePost('billing_portal/sessions', stripeKey, {
-      customer:   paymentData.stripe_customer_id,
+      customer:   stripeCustomerId,
       return_url: returnUrl,
     });
 
