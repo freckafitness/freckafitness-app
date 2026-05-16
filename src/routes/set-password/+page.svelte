@@ -51,6 +51,9 @@
       return;
     }
 
+    // Non-blocking — fire and forget; don't delay the client's redirect
+    supabase.functions.invoke('notify-coach-client-activated').catch(() => {});
+
     goto('/my');
   }
 </script>
