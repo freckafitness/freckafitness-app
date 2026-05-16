@@ -19,9 +19,23 @@
     portalLoading = false;
     if (data?.url) {
       window.location.href = data.url;
-    } else {
-      portalError = data?.error ?? error?.message ?? 'Could not open portal';
+      return;
     }
+    let msg = 'Could not open portal';
+    if (error) {
+      console.error('create-portal-session error:', error);
+      const ctx = error.context;
+      if (ctx instanceof Response) {
+        try { const j = await ctx.json(); msg = j.error ?? msg; } catch {}
+      } else if (ctx?.error) {
+        msg = ctx.error;
+      } else if (error.message && !error.message.includes('non-2xx')) {
+        msg = error.message;
+      }
+    } else if (data?.error) {
+      msg = data.error;
+    }
+    portalError = msg;
   }
 </script>
 
