@@ -21,23 +21,8 @@
   let chartsOpen    = false;
   let clientColor   = null;
 
-  let portalLoading   = false;
-  let portalError     = '';
-  let hasStripeCustomer = false;
   let funFact = '';
   let animalFact = '';
-
-  async function openPortal() {
-    portalLoading = true;
-    portalError   = '';
-    const { data, error } = await supabase.functions.invoke('create-portal-session');
-    portalLoading = false;
-    if (data?.url) {
-      window.location.href = data.url;
-    } else {
-      portalError = data?.error ?? error?.message ?? 'Could not open portal';
-    }
-  }
 
   // Ensures the color has enough contrast on white. If luminance > 0.5,
   // keeps the hue/saturation but darkens to 45% lightness.
@@ -82,7 +67,7 @@
     const { data: role } = await supabase.from('user_roles').select('role, client_id').single();
     if (role?.role === 'coach') { goto('/dashboard'); return; }
 
-    const [{ data: clientData }, { data: checkinData }, { data: paymentData }] = await Promise.all([
+    const [{ data: clientData }, { data: checkinData }] = await Promise.all([
       supabase.from('clients')
         .select('first_name, last_name, weight_unit, favorite_color')
         .eq('id', role.client_id)
@@ -91,19 +76,11 @@
         .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, weekly_curiosity, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, stress_level, upcoming_disruptions, disruption_notes')
         .eq('client_id', role.client_id)
         .order('week_ending', { ascending: false }),
-      supabase.from('payments')
-        .select('stripe_customer_id')
-        .eq('client_id', role.client_id)
-        .eq('test_mode', false)
-        .not('stripe_customer_id', 'is', null)
-        .limit(1)
-        .maybeSingle(),
     ]);
 
-    client            = clientData;
-    weightUnit        = clientData?.weight_unit ?? 'kg';
-    checkins          = checkinData ?? [];
-    hasStripeCustomer = !!paymentData?.stripe_customer_id;
+    client     = clientData;
+    weightUnit = clientData?.weight_unit ?? 'kg';
+    checkins   = checkinData ?? [];
     clientColor = clientData?.favorite_color ?? null;
     // Most recent expanded by default
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
@@ -309,7 +286,7 @@
 <svelte:head><title>My Portal — Frecka Fitness</title></svelte:head>
 
 <div class="page">
-  <Header />
+  <Header showPortal={true} />
   <main>
     <p class="eyebrow">Client Portal</p>
     <h1>Welcome{client ? `, ${client.first_name}` : ''}</h1>
@@ -323,12 +300,6 @@
 
     <div class="actions">
       <a href="/my/checkin" class="btn-primary">Submit Weekly Check-In</a>
-      {#if hasStripeCustomer}
-        <button class="btn-portal" on:click={openPortal} disabled={portalLoading}>
-          {portalLoading ? 'Opening…' : 'Manage Subscription'}
-        </button>
-        {#if portalError}<p class="portal-error">{portalError}</p>{/if}
-      {/if}
     </div>
 
     <!-- Habit web + Trend charts -->
@@ -572,30 +543,6 @@
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-  }
-
-  .btn-portal {
-    font-family: 'Halyard Display', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--black);
-    background: none;
-    border: 1px solid var(--light-grey);
-    border-radius: 4px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: border-color 0.15s;
-  }
-  .btn-portal:hover:not(:disabled) { border-color: var(--black); }
-  .btn-portal:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .portal-error {
-    font-size: 12px;
-    color: var(--error);
-    width: 100%;
-    margin: 0;
   }
 
   .btn-primary {
