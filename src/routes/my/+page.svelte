@@ -21,6 +21,7 @@
   let chartsOpen    = false;
   let clientColor   = null;
 
+  let hasStripeCustomer = false;
   let funFact = '';
   let animalFact = '';
 
@@ -67,20 +68,28 @@
     const { data: role } = await supabase.from('user_roles').select('role, client_id').single();
     if (role?.role === 'coach') { goto('/dashboard'); return; }
 
-    const [{ data: clientData }, { data: checkinData }] = await Promise.all([
+    const [{ data: clientData }, { data: checkinData }, { data: paymentData }] = await Promise.all([
       supabase.from('clients')
-        .select('first_name, last_name, weight_unit, favorite_color')
+        .select('first_name, last_name, weight_unit, favorite_color, stripe_customer_id')
         .eq('id', role.client_id)
         .single(),
       supabase.from('checkins')
         .select('id, week_ending, week_rating, missed_sessions, progress_trend, soreness, nutrition_adherence, best_lift, program_feedback, soreness_notes, nutrition_notes, for_ryan, weekly_curiosity, coach_notes, coach_notes_updated_at, bodyweight, sleep_hours, stress_level, upcoming_disruptions, disruption_notes')
         .eq('client_id', role.client_id)
         .order('week_ending', { ascending: false }),
+      supabase.from('payments')
+        .select('stripe_customer_id')
+        .eq('client_id', role.client_id)
+        .eq('test_mode', false)
+        .not('stripe_customer_id', 'is', null)
+        .limit(1)
+        .maybeSingle(),
     ]);
 
-    client     = clientData;
-    weightUnit = clientData?.weight_unit ?? 'kg';
-    checkins   = checkinData ?? [];
+    client            = clientData;
+    weightUnit        = clientData?.weight_unit ?? 'kg';
+    checkins          = checkinData ?? [];
+    hasStripeCustomer = !!clientData?.stripe_customer_id || !!paymentData?.stripe_customer_id;
     clientColor = clientData?.favorite_color ?? null;
     // Most recent expanded by default
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
@@ -286,7 +295,7 @@
 <svelte:head><title>My Portal — Frecka Fitness</title></svelte:head>
 
 <div class="page">
-  <Header showPortal={true} />
+  <Header showPortal={hasStripeCustomer} />
   <main>
     <p class="eyebrow">Client Portal</p>
     <h1>Welcome{client ? `, ${client.first_name}` : ''}</h1>
