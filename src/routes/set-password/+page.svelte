@@ -9,15 +9,24 @@
   let saving = false;
   let loading = true;
 
-  onMount(async () => {
-    // Give the Supabase client a tick to process the hash tokens from the invite link
-    await new Promise(r => setTimeout(r, 100));
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      goto('/login');
-      return;
-    }
-    loading = false;
+  onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasPkceCode  = params.has('code');
+    const hasHashToken = window.location.hash.includes('access_token');
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        loading = false;
+      } else if (event === 'INITIAL_SESSION') {
+        // If no session and no token in URL, nothing to work with — send to login
+        if (!session && !hasPkceCode && !hasHashToken) {
+          goto('/login');
+        }
+        // If there is a code/hash, wait for SIGNED_IN which fires after exchange completes
+      }
+    });
+
+    return () => subscription.unsubscribe();
   });
 
   async function handleSubmit(e) {
