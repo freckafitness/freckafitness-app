@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 // TODO: Replace with the TrainHeroic primer URL before deploying
-const TRAINHEROIC_PRIMER_URL = 'https://trainheroic.com'
+const TRAINHEROIC_PRIMER_URL = 'https://www.youtube.com/watch?v=c_OwGgkIkSc'
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
