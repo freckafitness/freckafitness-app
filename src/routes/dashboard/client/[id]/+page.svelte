@@ -40,6 +40,12 @@
   let portalLoading     = false;
   let testMode          = false;
 
+  // Forms
+  let gaqFileInput, consentFileInput;
+  let gaqUploading = false, consentUploading = false;
+  let gaqError = '', consentError = '';
+  let gaqSignedUrl = '', consentSignedUrl = '';
+
   // Chart canvas refs
   let ratingCanvas, nutritionCanvas, sorenessCanvas, missedCanvas, sleepCanvas, stressCanvas, bodyweightCanvas, radarCanvas, comparisonCanvas;
   let charts = [];
@@ -281,6 +287,15 @@
     if (checkins.length > 0) expanded = { [checkins[0].id]: true };
     displayUnit = c?.weight_unit ?? 'kg';
 
+    if (c?.ga_q_storage_path) {
+      const { data: u1 } = await supabase.storage.from('client-documents').createSignedUrl(c.ga_q_storage_path, 3600);
+      if (u1) gaqSignedUrl = u1.signedUrl;
+    }
+    if (c?.informed_consent_storage_path) {
+      const { data: u2 } = await supabase.storage.from('client-documents').createSignedUrl(c.informed_consent_storage_path, 3600);
+      if (u2) consentSignedUrl = u2.signedUrl;
+    }
+
     testMode = localStorage.getItem('stripe_test_mode') === 'true';
     loading = false;
 
@@ -442,6 +457,10 @@
     return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
 
+  function fmtTimestamp(ts) {
+    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
   async function invokeWithError(fn: string, opts?: object) {
     const { data, error } = await supabase.functions.invoke(fn, opts);
     if (error || data?.error) {
@@ -558,6 +577,57 @@
     }
 
     goto('/dashboard');
+  }
+
+  async function uploadFormFile(formType: string, file: File | null | undefined) {
+    if (!file) return;
+    const isGaq = formType === 'ga_q';
+    if (file.type !== 'application/pdf') {
+      if (isGaq) gaqError = 'Please upload a PDF file.';
+      else consentError = 'Please upload a PDF file.';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      if (isGaq) gaqError = 'File must be under 10 MB.';
+      else consentError = 'File must be under 10 MB.';
+      return;
+    }
+    if (isGaq) { gaqUploading = true; gaqError = ''; }
+    else { consentUploading = true; consentError = ''; }
+
+    const path = `${client.id}/${isGaq ? 'ga-q' : 'informed-consent'}.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from('client-documents')
+      .upload(path, file, { contentType: 'application/pdf', upsert: true });
+
+    if (uploadError) {
+      if (isGaq) { gaqError = uploadError.message; gaqUploading = false; }
+      else { consentError = uploadError.message; consentUploading = false; }
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const updates = {
+      [`${formType}_storage_path`]: path,
+      [`${formType}_received`]:     true,
+      [`${formType}_received_at`]:  now,
+    };
+    await supabase.from('clients').update(updates).eq('id', client.id);
+    client = { ...client, ...updates };
+
+    const { data: urlData } = await supabase.storage.from('client-documents').createSignedUrl(path, 3600);
+    if (isGaq) { gaqSignedUrl = urlData?.signedUrl ?? ''; gaqUploading = false; }
+    else { consentSignedUrl = urlData?.signedUrl ?? ''; consentUploading = false; }
+  }
+
+  async function toggleFormReceived(formType: string) {
+    const next = !client[`${formType}_received`];
+    const updates = {
+      [`${formType}_received`]:    next,
+      [`${formType}_received_at`]: next ? new Date().toISOString() : null,
+    };
+    client = { ...client, ...updates };
+    await supabase.from('clients').update(updates).eq('id', client.id);
   }
 </script>
 
@@ -743,6 +813,62 @@
             {/each}
           </div>
         {/if}
+      </section>
+
+      <!-- Forms -->
+      <section class="forms-section">
+        <div class="section-header">
+          <h2>Forms</h2>
+        </div>
+
+        <input type="file" accept=".pdf" style="display:none" bind:this={gaqFileInput}
+          on:change={e => uploadFormFile('ga_q', e.target.files?.[0])} />
+        <input type="file" accept=".pdf" style="display:none" bind:this={consentFileInput}
+          on:change={e => uploadFormFile('informed_consent', e.target.files?.[0])} />
+
+        <div class="form-row">
+          <div class="form-row-left">
+            <span class="form-name">Get Active Questionnaire</span>
+            {#if client.ga_q_received && client.ga_q_received_at}
+              <span class="form-date">Received {fmtTimestamp(client.ga_q_received_at)}</span>
+            {/if}
+          </div>
+          <div class="form-row-right">
+            <button class="bw-toggle" class:on={client.ga_q_received} on:click={() => toggleFormReceived('ga_q')}>
+              <span class="bw-toggle-track" class:on={client.ga_q_received}><span class="bw-toggle-thumb"></span></span>
+              {client.ga_q_received ? 'Received' : 'Not received'}
+            </button>
+            {#if gaqSignedUrl}
+              <a href={gaqSignedUrl} target="_blank" rel="noreferrer" class="btn-outline">Download</a>
+            {/if}
+            <button class="btn-outline" disabled={gaqUploading} on:click={() => gaqFileInput.click()}>
+              {gaqUploading ? 'Uploading…' : 'Upload'}
+            </button>
+            {#if gaqError}<span class="form-error">{gaqError}</span>{/if}
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-row-left">
+            <span class="form-name">Informed Consent</span>
+            {#if client.informed_consent_received && client.informed_consent_received_at}
+              <span class="form-date">Received {fmtTimestamp(client.informed_consent_received_at)}</span>
+            {/if}
+          </div>
+          <div class="form-row-right">
+            <button class="bw-toggle" class:on={client.informed_consent_received} on:click={() => toggleFormReceived('informed_consent')}>
+              <span class="bw-toggle-track" class:on={client.informed_consent_received}><span class="bw-toggle-thumb"></span></span>
+              {client.informed_consent_received ? 'Received' : 'Not received'}
+            </button>
+            {#if consentSignedUrl}
+              <a href={consentSignedUrl} target="_blank" rel="noreferrer" class="btn-outline">Download</a>
+            {/if}
+            <button class="btn-outline" disabled={consentUploading} on:click={() => consentFileInput.click()}>
+              {consentUploading ? 'Uploading…' : 'Upload'}
+            </button>
+            {#if consentError}<span class="form-error">{consentError}</span>{/if}
+          </div>
+        </div>
       </section>
 
       <!-- Trends -->
@@ -2084,5 +2210,49 @@
     color: white;
     padding: 2px 7px;
     border-radius: 20px;
+  }
+
+  /* Forms */
+  .forms-section { margin-bottom: 40px; }
+
+  .form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--light-grey);
+    flex-wrap: wrap;
+  }
+
+  .form-row:last-child { border-bottom: none; }
+
+  .form-row-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .form-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+  }
+
+  .form-date {
+    font-size: 12px;
+    color: var(--mid-grey);
+  }
+
+  .form-row-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .form-error {
+    font-size: 12px;
+    color: var(--error);
   }
 </style>
