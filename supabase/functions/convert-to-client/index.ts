@@ -153,14 +153,14 @@ Deno.serve(async (req) => {
       // Fetch blank form templates from the public form-templates storage bucket
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
       const [gaqRes, consentRes] = await Promise.all([
-        fetch(`${supabaseUrl}/storage/v1/object/public/form-templates/ga-q.pdf`),
-        fetch(`${supabaseUrl}/storage/v1/object/public/form-templates/informed-consent.pdf`),
+        fetch(`${supabaseUrl}/storage/v1/object/public/form-templates/CSEP-GA-Q.pdf`),
+        fetch(`${supabaseUrl}/storage/v1/object/public/form-templates/CSEP-Informed-Consent.pdf`),
       ])
 
       const attachments: { filename: string; content: string }[] = []
       if (gaqRes.ok) {
         attachments.push({
-          filename: '1-CSEP-Get-Active-Questionnaire.pdf',
+          filename: 'CSEP-GA-Q.pdf',
           content:  arrayBufferToBase64(await gaqRes.arrayBuffer()),
         })
       } else {
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       }
       if (consentRes.ok) {
         attachments.push({
-          filename: '2-CSEP-Informed-Consent.pdf',
+          filename: 'CSEP-Informed-Consent.pdf',
           content:  arrayBufferToBase64(await consentRes.arrayBuffer()),
         })
       } else {
