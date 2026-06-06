@@ -5,11 +5,13 @@
   import Header from '$lib/Header.svelte';
 
   let clientId = null;
-  let weekEnding = '';
+  let availableWeeks = [];
+  let selectedWeek = '';
   let loading = false;
   let error = '';
-  let alreadySubmitted = false;
   let isPreview = false;
+
+  $: weekEnding = selectedWeek;
 
   // Form fields
   let missedSessions = 0;
@@ -66,23 +68,34 @@
     if (role?.role === 'coach' && !isPreview) { goto('/dashboard'); return; }
     clientId = role?.client_id;
 
-    // Calculate week ending first (needed for duplicate check)
+    // Build 3 candidate week-ending Sundays: current + 2 prior
     const today = new Date();
     const daysUntilSunday = today.getDay() === 0 ? 0 : 7 - today.getDay();
-    const sunday = new Date(today);
-    sunday.setDate(today.getDate() + daysUntilSunday);
-    weekEnding = sunday.toISOString().split('T')[0];
+    const baseSunday = new Date(today);
+    baseSunday.setDate(today.getDate() + daysUntilSunday);
+    const candidates = [0, 1, 2].map(offset => {
+      const d = new Date(baseSunday);
+      d.setDate(d.getDate() - offset * 7);
+      return d.toISOString().split('T')[0];
+    });
 
-    if (!isPreview) {
-      const [{ data: clientRow }, { data: existing }] = await Promise.all([
-        supabase.from('clients').select('show_bodyweight, weight_unit, show_weekly_curiosity').eq('id', role.client_id).single(),
-        supabase.from('checkins').select('id').eq('client_id', clientId).eq('week_ending', weekEnding).limit(1),
-      ]);
-      showBodyweight        = clientRow?.show_bodyweight ?? false;
-      weightUnit            = clientRow?.weight_unit ?? 'kg';
-      showWeeklyCuriosity   = clientRow?.show_weekly_curiosity ?? false;
-      alreadySubmitted = (existing?.length ?? 0) > 0;
+    if (isPreview) {
+      selectedWeek = candidates[0];
+      return;
     }
+
+    const [{ data: clientRow }, { data: existing }] = await Promise.all([
+      supabase.from('clients').select('show_bodyweight, weight_unit, show_weekly_curiosity').eq('id', clientId).single(),
+      supabase.from('checkins').select('week_ending').eq('client_id', clientId).in('week_ending', candidates),
+    ]);
+
+    showBodyweight      = clientRow?.show_bodyweight ?? false;
+    weightUnit          = clientRow?.weight_unit ?? 'kg';
+    showWeeklyCuriosity = clientRow?.show_weekly_curiosity ?? false;
+
+    const submittedWeeks = new Set(existing?.map(r => r.week_ending) ?? []);
+    availableWeeks = candidates.filter(w => !submittedWeeks.has(w));
+    selectedWeek = availableWeeks[0] ?? '';
   });
 
   async function switchUnit(u) {
@@ -162,13 +175,24 @@
       </div>
     {/if}
 
-    {#if alreadySubmitted}
+    {#if availableWeeks.length === 0 && !isPreview}
       <div class="already-submitted">
-        <p class="already-title">Already submitted</p>
-        <p class="already-body">You've already sent a check-in for the week ending {weekEnding ? new Date(weekEnding + 'T12:00:00').toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' }) : 'this week'}. I'll review it and respond before next week.</p>
+        <p class="already-title">All caught up</p>
+        <p class="already-body">You've submitted check-ins for each of the past three weeks. I'll have everything I need until next Sunday.</p>
         <a href="/my" class="btn-back">← Back to Portal</a>
       </div>
     {:else}
+
+    {#if availableWeeks.length > 1}
+      <div class="week-select-field">
+        <label for="weekSelect">Which week are you checking in for?</label>
+        <select id="weekSelect" bind:value={selectedWeek}>
+          {#each availableWeeks as w}
+            <option value={w}>Week ending {new Date(w + 'T12:00:00').toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })}</option>
+          {/each}
+        </select>
+      </div>
+    {/if}
 
     <form on:submit={handleSubmit}>
 
@@ -496,7 +520,8 @@
 
   input[type="text"],
   input[type="number"],
-  textarea {
+  textarea,
+  select {
     width: 100%;
     background: var(--warm-white);
     border: 1.5px solid var(--light-grey);
@@ -511,10 +536,30 @@
 
   input[type="text"]:focus,
   input[type="number"]:focus,
-  textarea:focus {
+  textarea:focus,
+  select:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(200,169,110,0.12);
   }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23253551' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+    cursor: pointer;
+  }
+
+  .week-select-field {
+    margin-bottom: 40px;
+    padding: 18px 20px 20px;
+    background: var(--warm-white);
+    border: 1.5px solid var(--light-grey);
+    border-radius: 8px;
+  }
+
+  .week-select-field label { margin-bottom: 10px; }
 
   input[type="text"]::placeholder,
   input[type="number"]::placeholder,
