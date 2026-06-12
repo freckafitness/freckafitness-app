@@ -8,6 +8,12 @@
   let error = '';
   let loading = false;
 
+  let showReset = false;
+  let resetEmail = '';
+  let resetSent = false;
+  let resetError = '';
+  let resetLoading = false;
+
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) redirectByRole();
@@ -17,6 +23,18 @@
     const { data } = await supabase.from('user_roles').select('role').single();
     if (data?.role === 'coach') goto('/dashboard');
     else goto('/my');
+  }
+
+  async function handleReset(e) {
+    e.preventDefault();
+    resetError = '';
+    resetLoading = true;
+    const { error: err } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: 'https://app.freckafitness.com/set-password?reset=true',
+    });
+    resetLoading = false;
+    if (err) { resetError = 'Could not send reset email. Please try again.'; return; }
+    resetSent = true;
   }
 
   async function handleLogin(e) {
@@ -47,41 +65,44 @@
       <p class="eyebrow">Client Portal</p>
     </div>
 
-    <form on:submit={handleLogin}>
-      <div class="field">
-        <label for="email">Email <span class="req">*</span></label>
-        <input
-          id="email"
-          type="email"
-          bind:value={email}
-          placeholder="you@example.com"
-          autocomplete="email"
-          required
-        />
-      </div>
-
-      <div class="field">
-        <label for="password">Password <span class="req">*</span></label>
-        <input
-          id="password"
-          type="password"
-          bind:value={password}
-          placeholder="••••••••"
-          autocomplete="current-password"
-          required
-        />
-      </div>
-
-      {#if error}
-        <p class="error">{error}</p>
+    {#if showReset}
+      {#if resetSent}
+        <p class="intro">Check your email for a password reset link.</p>
+        <button type="button" class="back-link" on:click={() => { showReset = false; resetSent = false; resetEmail = ''; }}>← Back to sign in</button>
+      {:else}
+        <p class="intro">Enter your email and we'll send a reset link.</p>
+        <form on:submit={handleReset}>
+          <div class="field">
+            <label for="resetEmail">Email <span class="req">*</span></label>
+            <input id="resetEmail" type="email" bind:value={resetEmail} placeholder="you@example.com" autocomplete="email" required />
+          </div>
+          {#if resetError}<p class="error">{resetError}</p>{/if}
+          <div class="submit-wrap">
+            <button type="submit" disabled={resetLoading}>{resetLoading ? 'Sending…' : 'Send Reset Link'}</button>
+          </div>
+        </form>
+        <button type="button" class="back-link" on:click={() => { showReset = false; resetError = ''; }}>← Back to sign in</button>
       {/if}
+    {:else}
+      <form on:submit={handleLogin}>
+        <div class="field">
+          <label for="email">Email <span class="req">*</span></label>
+          <input id="email" type="email" bind:value={email} placeholder="you@example.com" autocomplete="email" required />
+        </div>
 
-      <div class="submit-wrap">
-        <button type="submit" disabled={loading}>
-          {loading ? 'Signing in…' : 'Sign In'}
-        </button>
-      </div>
-    </form>
+        <div class="field">
+          <label for="password">Password <span class="req">*</span></label>
+          <input id="password" type="password" bind:value={password} placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+
+        {#if error}<p class="error">{error}</p>{/if}
+
+        <div class="submit-wrap">
+          <button type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign In'}</button>
+        </div>
+      </form>
+      <button type="button" class="back-link" on:click={() => { showReset = true; error = ''; }}>Forgot password?</button>
+    {/if}
   </div>
 </div>
 
@@ -147,6 +168,31 @@
   }
 
   .req { color: var(--accent); }
+
+  .intro {
+    font-size: 14px;
+    color: var(--mid-grey);
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .back-link {
+    display: block;
+    background: none;
+    border: none;
+    color: var(--mid-grey);
+    font-family: 'Halyard Display', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    margin-top: 1.25rem;
+    width: 100%;
+    padding: 0;
+    transition: color 0.15s;
+  }
+
+  .back-link:hover { color: var(--black); }
 
   input {
     width: 100%;

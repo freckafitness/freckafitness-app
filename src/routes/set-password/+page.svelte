@@ -8,21 +8,21 @@
   let error = '';
   let saving = false;
   let loading = true;
+  let isReset = false;
 
   onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const hasPkceCode  = params.has('code');
     const hasHashToken = window.location.hash.includes('access_token');
+    isReset = params.get('reset') === 'true';
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
         loading = false;
       } else if (event === 'INITIAL_SESSION') {
-        // If no session and no token in URL, nothing to work with — send to login
         if (!session && !hasPkceCode && !hasHashToken) {
           goto('/login');
         }
-        // If there is a code/hash, wait for SIGNED_IN which fires after exchange completes
       }
     });
 
@@ -59,20 +59,20 @@
 </script>
 
 <svelte:head>
-  <title>Set Your Password — Frecka Fitness</title>
+  <title>{isReset ? 'Reset Your Password' : 'Set Your Password'} — Frecka Fitness</title>
 </svelte:head>
 
 <div class="page">
   <div class="card">
     <div class="brand">
       <img src="/Logo/frecka-01.svg" alt="Frecka Fitness" class="logo" />
-      <p class="eyebrow">Set Password</p>
+      <p class="eyebrow">{isReset ? 'Reset Password' : 'Set Password'}</p>
     </div>
 
     {#if loading}
-      <p class="status">Setting up your account…</p>
+      <p class="status">{isReset ? 'Verifying your reset link…' : 'Setting up your account…'}</p>
     {:else}
-      <p class="intro">Choose a password for your Frecka Fitness account.</p>
+      <p class="intro">{isReset ? 'Enter a new password for your Frecka Fitness account.' : 'Choose a password for your Frecka Fitness account.'}</p>
 
       <form on:submit={handleSubmit}>
         <div class="field">
@@ -105,7 +105,7 @@
 
         <div class="submit-wrap">
           <button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Set Password'}
+            {saving ? 'Saving…' : isReset ? 'Reset Password' : 'Set Password'}
           </button>
         </div>
       </form>
