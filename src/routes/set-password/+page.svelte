@@ -9,12 +9,21 @@
   let saving = false;
   let loading = true;
   let isReset = false;
+  let linkExpired = false;
 
   onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const hasPkceCode  = params.has('code');
     const hasHashToken = window.location.hash.includes('access_token');
     isReset = params.get('reset') === 'true';
+
+    // Supabase sends errors in the hash when a link is invalid or expired
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    if (hashParams.get('error')) {
+      linkExpired = true;
+      loading = false;
+      return;
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
@@ -71,6 +80,11 @@
 
     {#if loading}
       <p class="status">{isReset ? 'Verifying your reset link…' : 'Setting up your account…'}</p>
+    {:else if linkExpired}
+      <p class="intro">This link has expired or already been used. Request a new one from the login page.</p>
+      <div class="submit-wrap">
+        <button type="button" on:click={() => goto('/login')}>Back to Sign In</button>
+      </div>
     {:else}
       <p class="intro">{isReset ? 'Enter a new password for your Frecka Fitness account.' : 'Choose a password for your Frecka Fitness account.'}</p>
 
