@@ -7,6 +7,7 @@
   let password = '';
   let error = '';
   let loading = false;
+  let rememberMe = true;
 
   let showReset = false;
   let resetEmail = '';
@@ -41,6 +42,9 @@
     e.preventDefault();
     error = '';
     loading = true;
+
+    // Set preference before sign-in so the storage adapter knows where to persist the session
+    localStorage.setItem('ff_remember_me', rememberMe ? 'true' : 'false');
 
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -96,6 +100,11 @@
         </div>
 
         {#if error}<p class="error">{error}</p>{/if}
+
+        <label class="remember">
+          <input type="checkbox" bind:checked={rememberMe} />
+          Remember me on this device
+        </label>
 
         <div class="submit-wrap">
           <button type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign In'}</button>
@@ -218,6 +227,30 @@
   .error {
     font-size: 13px;
     color: var(--error);
+  }
+
+  .remember {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--black);
+    opacity: 0.55;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .remember input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    border: 1.5px solid var(--light-grey);
+    border-radius: 3px;
+    background: var(--warm-white);
+    padding: 0;
+    accent-color: var(--black);
+    cursor: pointer;
   }
 
   .submit-wrap {
