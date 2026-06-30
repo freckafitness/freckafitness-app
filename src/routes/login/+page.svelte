@@ -7,7 +7,7 @@
   let password = '';
   let error = '';
   let loading = false;
-  let rememberMe = true;
+  let rememberMe = false;
 
   let showReset = false;
   let resetEmail = '';
