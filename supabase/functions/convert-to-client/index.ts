@@ -78,6 +78,37 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (existing?.status === 'active') {
+      // Check whether this active client is already linked to a (different)
+      // intake, or is an orphan from a previously silently-failed conversion
+      // of THIS intake (client created + invited, but the link-back below
+      // failed without raising an error and was never retried).
+      const { data: linkedIntake } = await supabaseAdmin
+        .from('intakes')
+        .select('id')
+        .eq('client_id', existing.id)
+        .maybeSingle()
+
+      if (!linkedIntake) {
+        const { error: healError } = await supabaseAdmin
+          .from('intakes')
+          .update({ client_id: existing.id })
+          .eq('id', intake_id)
+
+        if (healError) {
+          console.error('Failed to self-heal orphaned client link:', healError)
+          return new Response(
+            JSON.stringify({ error: 'Failed to link existing client record.' }),
+            { status: 500, headers: corsHeaders }
+          )
+        }
+
+        return new Response(JSON.stringify({
+          client_id: existing.id,
+          healed:    true,
+          note:      'This client was already created by a previous conversion attempt; the intake link has now been completed.',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
       return new Response(
         JSON.stringify({ error: 'A client with this email already exists.' }),
         { status: 409, headers: corsHeaders }
@@ -112,10 +143,17 @@ Deno.serve(async (req) => {
     }
 
     // Link intake to client
-    await supabaseAdmin
+    const { error: linkError } = await supabaseAdmin
       .from('intakes')
       .update({ client_id: client.id })
       .eq('id', intake_id)
+
+    if (linkError) {
+      // The client record already exists and is invited at this point — don't
+      // fail the whole request, but never let this fail silently again. The
+      // duplicate-check above will self-heal this link on a retry.
+      console.error('Failed to link intake to client:', linkError)
+    }
 
     // Send invite email — non-fatal if it fails (client record already created)
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
